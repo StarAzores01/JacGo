@@ -10,6 +10,7 @@
 <link rel="stylesheet" href="../css/layout.css" />
 <link rel="stylesheet" href="../css/components.css" />
 <link rel="stylesheet" href="../css/chatbot.css" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
 </head>
 <body data-page="track-bus">
 
@@ -144,16 +145,20 @@
     <main class="view">
       <div class="grid grid-2">
         <div class="card" style="grid-column:1/3;">
-          <span class="card-eyebrow">JAC-88213 · Pasay → Lucena</span>
-          <div class="map-placeholder">
-            <div class="map-pin" style="left:12%;top:60%;"></div>
-            <div class="map-pin" style="left:78%;top:28%;background:var(--black);"></div>
-            <div class="map-route" style="left:14%;top:58%;width:62%;transform:rotate(-18deg);"></div>
+          <div class="map-toolbar">
+            <span class="card-eyebrow">JAC-88213 · Pasay → Lucena</span>
+            <div class="map-actions">
+              <button class="btn btn-outline btn-sm" id="pin-location-btn" type="button">📍 Pin a location</button>
+              <button class="btn btn-outline btn-sm" id="use-my-location-btn" type="button">Use my location</button>
+              <button class="btn btn-outline btn-sm" id="clear-pin-btn" type="button" hidden>Clear pin</button>
+            </div>
           </div>
+          <div id="live-map" class="live-map" role="img" aria-label="Live map tracking JAC-88213 from Pasay to Lucena"></div>
+          <p class="map-hint" id="map-hint">Click "Pin a location" then tap anywhere on the map to drop a pin — handy for marking your pickup spot.</p>
           <div class="grid grid-3 mt-section">
-            <div><div class="card-eyebrow">Status</div><span class="pill ok">On time</span></div>
-            <div><div class="card-eyebrow">ETA to Lucena</div><strong>09:12 AM</strong></div>
-            <div><div class="card-eyebrow">Distance left</div><strong>48 km</strong></div>
+            <div><div class="card-eyebrow">Status</div><span class="pill ok" id="stat-status">On time</span></div>
+            <div><div class="card-eyebrow">ETA to Lucena</div><strong id="stat-eta">09:12 AM</strong></div>
+            <div><div class="card-eyebrow">Distance left</div><strong id="stat-distance">48 km</strong></div>
           </div>
         </div>
       </div>
@@ -192,5 +197,7 @@
 <script src="../js/interactions.js"></script>
 <script src="../js/chatbot.js"></script>
 <script src="../js/theme.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script src="../js/track-map.js"></script>
 </body>
 </html>

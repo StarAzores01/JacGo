@@ -48,7 +48,7 @@
 .feature-grid{ display:grid; grid-template-columns:repeat(4,1fr); gap:18px; }
 .feature-card{
   background:var(--surface); border:1px solid var(--line); border-radius:var(--radius-md);
-  padding:22px; transition:transform .15s ease, box-shadow .15s ease;
+  padding:22px; transition:transform .15s ease, box-shadow .15s ease; display:block;
 }
 .feature-card:hover{ transform:translateY(-3px); box-shadow:var(--shadow-card); }
 .feature-card .fi{
@@ -68,10 +68,19 @@
 .trust-card h3{ font-size:17px; margin-bottom:8px; line-height:1.25; }
 .trust-card p{ font-size:13.5px; color:var(--text-muted); line-height:1.55; margin:0; }
 
+.dest-carousel{ position:relative; display:flex; align-items:center; gap:12px; }
 .destinations .dest-scroll{
   display:flex; gap:18px; overflow-x:auto; padding-bottom:12px; margin:0 -6vw; padding-left:6vw; padding-right:6vw;
-  scroll-snap-type:x proximity; -webkit-overflow-scrolling:touch;
+  scroll-snap-type:x proximity; -webkit-overflow-scrolling:touch; scroll-behavior:smooth; scrollbar-width:none;
 }
+.destinations .dest-scroll::-webkit-scrollbar{ display:none; }
+.dest-arrow{
+  width:40px; height:40px; border:1px solid var(--line); border-radius:50%; background:var(--surface);
+  color:var(--ink); display:flex; align-items:center; justify-content:center; flex:0 0 40px;
+  font-size:22px; line-height:1; cursor:pointer; box-shadow:var(--shadow-card); z-index:1;
+}
+.dest-arrow:hover:not(:disabled){ background:var(--ink); color:var(--surface); }
+.dest-arrow:disabled{ opacity:.35; cursor:not-allowed; }
 .dest-card{
   flex:0 0 220px; scroll-snap-align:start; background:var(--surface); border:1px solid var(--line);
   border-radius:var(--radius-md); overflow:hidden; transition:transform .15s ease, box-shadow .15s ease;
@@ -107,4 +116,7 @@
   .feature-grid{ grid-template-columns:1fr; }
   .cta-band{ flex-direction:column; align-items:flex-start; }
   .dest-card{ flex-basis:170px; }
+  .dest-carousel{ gap:6px; }
+  .dest-arrow{ width:34px; height:34px; flex-basis:34px; font-size:19px; }
+  .destinations .dest-scroll{ gap:12px; margin:0 -6vw; padding-left:6vw; padding-right:6vw; }
 }

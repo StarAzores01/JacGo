@@ -216,6 +216,89 @@
     });
   }
 
+  function wireDestinationCarousel() {
+    const track = document.getElementById("dest-scroll");
+    const previous = document.querySelector(".dest-prev");
+    const next = document.querySelector(".dest-next");
+    if (!track || !previous || !next) return;
+
+    function updateControls() {
+      const maxScroll = track.scrollWidth - track.clientWidth;
+      previous.disabled = track.scrollLeft <= 1;
+      next.disabled = track.scrollLeft >= maxScroll - 1;
+    }
+
+    function scrollByCard(direction) {
+      const card = track.querySelector(".dest-card");
+      if (!card) return;
+      const gap = parseFloat(getComputedStyle(track).gap) || 0;
+      track.scrollBy({ left: direction * (card.offsetWidth + gap), behavior: "smooth" });
+    }
+
+    previous.addEventListener("click", () => scrollByCard(-1));
+    next.addEventListener("click", () => scrollByCard(1));
+    track.addEventListener("scroll", updateControls, { passive: true });
+    window.addEventListener("resize", updateControls);
+    updateControls();
+  }
+
+  function wireCardDetails() {
+    const cards = document.querySelectorAll(".dest-card, .photo-card");
+    if (!cards.length) return;
+
+    const details = {
+      "Tayabas": ["Tayabas City, Quezon", "Daily; JAC Liner schedules vary depending on the route", "Fare varies depending on the passenger's point of origin and destination", "N/A", "Tayabas is one of the destinations served by JAC Liner in Quezon. It provides access to the historic city and nearby tourist destinations."],
+      "Lucena City": ["Lucena Grand Central Terminal, Ilayang Dupay, Lucena City, Quezon", "Daily; multiple trips are available depending on the route", "Fare varies depending on origin, destination, and bus type", "N/A", "Lucena City is one of JAC Liner's major transportation hubs in Quezon. The Lucena Grand Central Terminal serves passengers traveling between Metro Manila, Quezon, and other Southern Luzon destinations."],
+      "Calamba Hot Springs": ["Calamba / Los Banos area, Laguna", "Depends on the specific hot spring resort", "No fixed JAC Liner rate; local transportation is required from the nearest bus stop", "Depends on the resort", "The Calamba-Los Banos area is known for its hot spring resorts. JAC Liner provides transportation to the area, after which passengers can use local transportation to reach individual resorts."],
+      "Anilao": ["Nailao, Quezon", "Unable to verify", "Unable to verify", "Unable to verify", "I could not reliably confirm Nailao as an official JAC Liner destination from current public information. The exact location or spelling should be verified before adding it to your system."],
+      "Marinduque": ["Marinduque Province", "Daily; schedules may vary", "Varies according to destination and point of origin", "Depends on the selected accommodation", "JAC Liner provides transportation connecting passengers from Metro Manila and Lucena toward several destinations in Marinduque, including Boac, Gasan, Buenavista, Torrijos, and Santa Cruz."],
+      "Lucban": ["Lucban, Quezon", "Daily; schedules may vary by route", "Fare varies depending on origin, destination, and bus type", "N/A", "Lucban is a Quezon destination shown in JAC Go's popular destinations list. Confirm the current route and schedule before traveling."],
+      "Terrazza Inn Lucena": ["Lucena City, Quezon", "Unable to reliably verify", "Unable to reliably verify current room rates", "Depends on room type and length of stay", "Terezza Inn is listed as an accommodation establishment associated with Lucena, but current reliable information about its room rates and operating schedule could not be confirmed."],
+      "Batangas Bay Hotel": ["Batangas City, Batangas", "Hotel accommodation available; exact operating schedule should be confirmed with the establishment", "Unable to verify the exact current rate for a hotel named Batangas Bay Hotel", "Depends on room type and duration of stay", "The exact establishment called Batangas Bay Hotel could not be reliably matched with current information. The name may refer to another hotel in Batangas City."],
+      "Calamba Garden Suites": ["Calamba City, Laguna", "Unable to reliably verify", "Unable to reliably verify current room rates", "Depends on room type and duration of stay", "Calamba Garden Suites could not be reliably verified under this exact name using current public information. The establishment's exact name should be confirmed before using the information in your system."],
+      "RAYLux Hotel": ["Pagbilao, Quezon", "Hotel accommodation; exact operating hours should be confirmed with the hotel", "Current room rates not reliably published", "Depends on room type and length of stay", "RAYLux Hotel is an accommodation establishment in Pagbilao, Quezon. It provides lodging for travelers visiting Pagbilao and nearby areas."],
+      "Hotel Oliva 88": ["National Highway, Paciano Rizal, Calamba, Laguna", "Hotel accommodation available; exact schedule should be confirmed", "Current room rates not reliably published", "Depends on room type and length of stay", "Hotel Olivia 88 is located along the National Highway in Calamba, Laguna. Its location makes it convenient for travelers passing through Calamba and nearby destinations."]
+    };
+
+    const overlay = document.createElement("div");
+    overlay.className = "modal-overlay card-details-overlay";
+    overlay.setAttribute("role", "dialog");
+    overlay.setAttribute("aria-modal", "true");
+    overlay.innerHTML = `<div class="modal card-details-modal"><div class="modal-header"><h2 id="card-details-title"></h2><button class="modal-close" type="button" aria-label="Close details">&times;</button></div><dl class="card-details-list"><div><dt>Location</dt><dd data-detail="0"></dd></div><div><dt>Open hours/days</dt><dd data-detail="1"></dd></div><div><dt>Rates</dt><dd data-detail="2"></dd></div><div><dt>Packages price</dt><dd data-detail="3"></dd></div><div><dt>Details</dt><dd data-detail="4"></dd></div></dl></div>`;
+    document.body.appendChild(overlay);
+
+    let lastCard = null;
+    const close = () => {
+      overlay.classList.remove("open");
+      if (lastCard) lastCard.focus({ preventScroll: true });
+    };
+    overlay.querySelector(".modal-close").addEventListener("click", close);
+    overlay.addEventListener("click", e => { if (e.target === overlay) close(); });
+    document.addEventListener("keydown", e => { if (e.key === "Escape") close(); });
+
+    cards.forEach(card => {
+      const name = card.querySelector("h4")?.textContent.trim();
+      const content = details[name];
+      if (!content) return;
+      card.setAttribute("tabindex", "0");
+      card.setAttribute("role", "button");
+      card.setAttribute("aria-label", `View details for ${name}`);
+      const open = event => {
+        if (event) {
+          event.preventDefault();
+          event.stopPropagation();
+        }
+        lastCard = card;
+        overlay.querySelector("#card-details-title").textContent = name;
+        content.forEach((value, index) => { overlay.querySelector(`[data-detail="${index}"]`).textContent = value; });
+        overlay.classList.add("open");
+        overlay.querySelector(".modal-close").focus({ preventScroll: true });
+      };
+      card.addEventListener("click", open);
+      card.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); open(e); } });
+    });
+  }
+
   document.addEventListener("DOMContentLoaded", () => {
     initFlapBoard();
     fillDashboardWidgets();
@@ -228,5 +311,7 @@
     wireForgotPassword();
     wirePasswordToggles();
     wireSignupForm();
+    wireDestinationCarousel();
+    wireCardDetails();
   });
 })();
