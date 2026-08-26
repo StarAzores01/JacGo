@@ -1,0 +1,257 @@
+/* components.css — cards, flap board, tickets, maps, toasts, empty states */
+
+/* Split-flap departure board */
+.flap-board{
+  background:var(--black); border-radius:var(--radius-lg); padding:22px 24px;
+  display:flex; align-items:center; gap:28px; flex-wrap:wrap;
+  box-shadow:var(--shadow-card); margin-bottom:24px; overflow:hidden; position:relative;
+}
+.flap-board::before{
+  content:"NEXT DEPARTURE"; position:absolute; top:10px; left:24px;
+  font-size:10px; letter-spacing:.18em; color:rgba(255,255,255,.4); font-weight:600;
+}
+.flap-group{ display:flex; flex-direction:column; gap:4px; margin-top:10px; }
+.flap-label{ font-size:10px; letter-spacing:.1em; color:rgba(255,255,255,.45); text-transform:uppercase; }
+.flap-row{ display:flex; gap:4px; }
+.flap{
+  background:#0F1013; border-radius:4px; padding:6px 4px; width:30px; text-align:center;
+  font-family:var(--font-mono); font-size:22px; font-weight:600; color:var(--yellow);
+  border:1px solid rgba(255,255,255,.08);
+}
+.flap.wide{ width:auto; padding:6px 10px; font-size:16px; color:var(--white); }
+.flap-status{
+  margin-left:auto; margin-top:10px; padding:6px 12px; border-radius:999px;
+  background:rgba(30,142,90,.15); color:#5FE3A6; font-size:12px; font-weight:600;
+  font-family:var(--font-mono);
+}
+.flap-status.delay{ background:rgba(216,30,39,.18); color:#FF7A7F; }
+@keyframes flapIn{ from{ opacity:0; transform:translateY(-6px); } to{ opacity:1; transform:translateY(0); } }
+.flap.animate{ animation:flapIn .35s ease both; }
+
+/* Cards */
+.card{
+  background:var(--surface); border:1px solid var(--line); border-radius:var(--radius-md);
+  padding:20px; box-shadow:var(--shadow-card);
+}
+.card h3, .photo-card .body h3{ font-size:15px; font-weight:700; font-family:var(--font-body); margin-bottom:12px; }
+
+.quick-action{
+  display:flex; flex-direction:column; gap:10px; align-items:flex-start;
+  background:var(--surface); border:1px solid var(--line); border-radius:var(--radius-md);
+  padding:16px; transition:transform .15s ease, box-shadow .15s ease;
+}
+.quick-action:hover{ transform:translateY(-2px); box-shadow:var(--shadow-card); }
+.quick-action .qa-ic{
+  width:36px; height:36px; border-radius:9px; background:var(--bg);
+  display:flex; align-items:center; justify-content:center;
+}
+.quick-action .qa-ic svg{ width:18px; height:18px; stroke:currentColor; display:block; }
+.quick-action span.label{ font-weight:600; font-size:13.5px; }
+
+.weather-widget{ display:flex; align-items:center; justify-content:space-between; }
+.weather-temp{ font-family:var(--font-display); font-size:44px; font-weight:800; }
+.weather-desc{ color:var(--text-muted); font-size:13px; }
+
+.list-row{
+  display:flex; align-items:center; gap:14px; padding:12px 0; border-bottom:1px solid var(--line);
+}
+.list-row:last-child{ border-bottom:none; }
+
+/* Packing list */
+.packing-group{ margin-bottom:16px; }
+.packing-group:last-child{ margin-bottom:0; }
+.packing-group-label{
+  font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.06em;
+  color:var(--text-muted); margin-bottom:8px;
+}
+.packing-items{ display:flex; flex-direction:column; gap:8px; }
+.packing-item{ display:flex; align-items:center; gap:10px; font-size:13.5px; }
+.packing-item input[type="checkbox"]{ width:16px; height:16px; accent-color:var(--red); flex-shrink:0; }
+.packing-item label{ cursor:pointer; }
+
+/* Ticket card */
+.ticket{
+  display:grid; grid-template-columns:1fr auto; gap:20px; align-items:center;
+  background:var(--surface); border:1px solid var(--line); border-radius:var(--radius-md);
+  padding:18px; position:relative; overflow:hidden;
+}
+.ticket::before{
+  content:""; position:absolute; left:0; top:0; bottom:0; width:6px; background:var(--red);
+}
+.ticket-route{ font-family:var(--font-display); font-size:22px; font-weight:800; }
+.ticket-meta{ display:flex; gap:16px; color:var(--text-muted); font-size:12.5px; margin-top:4px; flex-wrap:wrap; }
+.qr-box{
+  width:76px; height:76px; border-radius:var(--radius-sm);
+  background: repeating-linear-gradient(45deg, var(--black) 0 4px, var(--white) 4px 8px);
+  border:1px solid var(--line);
+}
+@media (max-width: 620px){
+  .ticket{ grid-template-columns:1fr; }
+  .qr-box{ justify-self:start; }
+  .weather-widget{ flex-direction:column; align-items:flex-start; gap:14px; }
+  .weather-widget .btn{ width:100%; }
+  .list-row{ padding:14px 0; }
+}
+
+/* Map placeholder (generic) */
+.map-placeholder{
+  height:280px; border-radius:var(--radius-md); position:relative; overflow:hidden;
+  background:
+    linear-gradient(120deg, #DCE7E0 25%, transparent 25%) -20px 0/40px 40px,
+    linear-gradient(var(--paper), var(--paper));
+  border:1px solid var(--line);
+}
+.map-pin{
+  position:absolute; width:14px; height:14px; border-radius:50% 50% 50% 0;
+  background:var(--red); transform:rotate(-45deg); box-shadow:0 0 0 4px rgba(216,30,39,.15);
+}
+.map-route{
+  position:absolute; height:3px;
+  background:repeating-linear-gradient(90deg,var(--black) 0 8px, transparent 8px 14px);
+}
+
+/* Terminal / accommodation photo card */
+.photo-card{ border-radius:var(--radius-md); overflow:hidden; border:1px solid var(--line); background:var(--surface); }
+.photo-card .thumb{
+  width:100%; height:120px; display:block; object-fit:cover;
+  background:linear-gradient(135deg,#EFE7D5,#DCC9A3);
+}
+.photo-card .body{ padding:14px; }
+.photo-card .body h4{ margin:0 0 4px; font-size:14px; }
+.photo-card .body p{ margin:0; font-size:12.5px; color:var(--text-muted); }
+
+/* Empty state */
+.empty{ text-align:center; padding:50px 20px; color:var(--text-muted); }
+.empty .ic{ margin-bottom:10px; }
+.empty .ic svg{ width:34px; height:34px; stroke:currentColor; display:block; margin:0 auto; }
+.empty h3{ color:var(--ink); margin-bottom:6px; }
+
+/* Bus search (trip planner) */
+.bus-search-card{ margin-bottom:24px; }
+.bus-search-grid{
+  display:grid; grid-template-columns:repeat(4,1fr) auto; gap:14px; align-items:end;
+}
+.bus-search-field{ display:flex; flex-direction:column; gap:6px; min-width:0; }
+.bus-search-field label{
+  font-size:12px; font-weight:600; color:var(--text-muted); text-transform:uppercase; letter-spacing:.04em;
+}
+.bus-search-field input, .bus-search-field select{
+  padding:11px 12px; border:1px solid var(--line); border-radius:var(--radius-sm);
+  font-family:inherit; font-size:14px; background:var(--surface); color:var(--ink); width:100%;
+}
+.bus-search-field input:focus, .bus-search-field select:focus{ border-color:var(--red); }
+.bus-search-btn{ white-space:nowrap; }
+
+/* Bus results list */
+.available-buses{ display:flex; flex-direction:column; gap:12px; margin-bottom:24px; }
+.available-buses .empty{
+  background:var(--surface); border:1px solid var(--line); border-radius:var(--radius-md);
+}
+.bus-result{
+  display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap;
+  background:var(--surface); border:1px solid var(--line); border-radius:var(--radius-md);
+  padding:16px 18px; transition:transform .15s ease, box-shadow .15s ease;
+}
+.bus-result:hover{ transform:translateY(-2px); box-shadow:var(--shadow-card); }
+.bus-result-main{ min-width:0; }
+.bus-result-route{ font-family:var(--font-display); font-size:19px; font-weight:800; letter-spacing:.01em; }
+.bus-result-route span{ color:var(--text-muted); font-weight:600; margin:0 6px; }
+.bus-result-details{
+  display:flex; align-items:center; gap:14px; color:var(--text-muted); font-size:12.5px;
+  margin-top:6px; flex-wrap:wrap;
+}
+.bus-result-details span:not(:last-child)::after{ content:"·"; margin-left:14px; color:var(--line); font-weight:700; }
+.bus-result-action{ display:flex; align-items:center; gap:16px; flex-shrink:0; margin-left:auto; }
+.seats-left{ font-size:12px; font-weight:600; color:var(--success); white-space:nowrap; }
+
+@media (max-width: 980px){
+  .bus-search-grid{ grid-template-columns:1fr 1fr; }
+  .bus-search-btn{ grid-column:1 / -1; }
+}
+@media (max-width: 620px){
+  .bus-search-grid{ grid-template-columns:1fr; }
+  .bus-result{ flex-direction:column; align-items:stretch; }
+  .bus-result-action{ margin-left:0; justify-content:space-between; }
+  .bus-result-details span:not(:last-child)::after{ margin-left:10px; }
+}
+
+/* Notifications */
+.notif-toolbar{ display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
+.notif-toolbar h3{ font-size:14px; font-weight:600; color:var(--text-muted); margin:0; }
+.toast-note{
+  display:flex; gap:12px; align-items:flex-start; padding:14px; border-radius:var(--radius-md);
+  border:1px solid var(--line); background:var(--surface); margin-bottom:10px;
+  transition:opacity .2s ease, transform .2s ease;
+}
+.toast-note.removing{ opacity:0; transform:translateX(12px); }
+.toast-note .dot-ic{ width:8px; height:8px; border-radius:50%; background:var(--yellow); margin-top:6px; flex-shrink:0; }
+.toast-note.alert .dot-ic{ background:var(--red); }
+.toast-note small{ color:var(--text-muted); }
+.toast-note-body{ flex:1; min-width:0; }
+.notif-delete{
+  width:30px; height:30px; border-radius:50%; border:1px solid var(--line);
+  background:transparent; display:flex; align-items:center; justify-content:center;
+  cursor:pointer; color:var(--text-muted); flex-shrink:0; align-self:center;
+}
+.notif-delete:hover{ background:rgba(216,30,39,.1); color:var(--red); border-color:var(--red); }
+.notif-delete svg{ width:14px; height:14px; stroke:currentColor; }
+.notif-empty{ text-align:center; padding:40px 20px; color:var(--text-muted); font-size:14px; }
+
+/* Terminal directions map modal */
+.terminal-map{
+  width:100%; height:240px; border-radius:var(--radius-md); background:var(--bg);
+  border:1px solid var(--line); position:relative; overflow:hidden; margin:16px 0;
+}
+.terminal-map svg{ width:100%; height:100%; }
+.map-legend{ display:flex; gap:16px; font-size:12px; color:var(--text-muted); margin-top:8px; flex-wrap:wrap; }
+.map-legend span{ display:flex; align-items:center; gap:6px; }
+.map-legend-dot{ width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+.direction-steps{ margin-top:14px; }
+.direction-step{
+  display:flex; gap:10px; align-items:flex-start; padding:8px 0;
+  border-bottom:1px solid var(--line); font-size:13px;
+}
+.direction-step:last-child{ border-bottom:none; }
+.step-num{
+  width:22px; height:22px; border-radius:50%; background:var(--red); color:var(--white);
+  font-size:11px; font-weight:700; display:flex; align-items:center; justify-content:center; flex-shrink:0;
+}
+
+/* Weather search bar */
+.weather-search{ display:flex; gap:10px; align-items:flex-end; margin-bottom:20px; flex-wrap:wrap; }
+.weather-search .field{ flex:1; min-width:140px; margin-bottom:0; }
+.weather-grid{ display:grid; gap:18px; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); }
+
+/* Trip planner bus results and itinerary list */
+.planner-bus-results{ display:flex; flex-direction:column; gap:10px; margin-top:16px; }
+.itinerary-form{ margin-top:16px; }
+.itinerary-item{
+  display:flex; align-items:center; justify-content:space-between; padding:10px 0;
+  border-bottom:1px solid var(--line); font-size:13.5px;
+}
+.itinerary-item:last-child{ border-bottom:none; }
+.itinerary-remove{ background:none; border:none; cursor:pointer; color:var(--text-muted); padding:4px; }
+.itinerary-remove:hover{ color:var(--red); }
+
+/* Reschedule date/time row */
+.reschedule-time-grid{ display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:4px; }
+
+/* Payment methods */
+.payment-list{ margin-bottom:14px; }
+.payment-method-item{
+  display:flex; align-items:center; gap:12px; padding:12px 0;
+  border-bottom:1px solid var(--line);
+}
+.payment-method-item:last-child{ border-bottom:none; }
+.payment-icon{
+  width:40px; height:26px; border-radius:4px; display:flex; align-items:center;
+  justify-content:center; font-size:10px; font-weight:700; color:var(--white); flex-shrink:0;
+}
+.payment-icon.gcash{ background:#007DFF; }
+.payment-icon.visa{ background:#1A1F71; }
+.payment-icon.paymaya{ background:#00C878; }
+.payment-icon.paypal{ background:#003087; }
+.payment-method-info{ flex:1; min-width:0; }
+.payment-method-name{ font-weight:600; font-size:13.5px; }
+.payment-method-sub{ font-size:12px; color:var(--text-muted); }
+.payment-method-actions{ display:flex; gap:6px; }
