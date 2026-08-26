@@ -1,0 +1,24 @@
+# Dependencies (pipeline/ is currently zero-dependency — Node's built-in
+# fetch — but this covers it if that ever changes)
+node_modules/
+
+# Secrets / environment — never commit real API keys
+.env
+.env.*
+*.env
+
+# OS cruft
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Logs (e.g. pipeline test runs — pipeline/run.log)
+*.log
+
+# pipeline/output/*.json is intentionally NOT ignored — see pipeline/README.md.
+# That's real sourced data (OSM/Wikidata/Wikipedia), not a build artifact.
+
+# .vscode/ is intentionally NOT ignored — launch.json here is a generic
+# Chrome-debugger config (no machine-specific paths), useful to share.
+# Uncomment below if you'd rather keep editor config local-only:
+# .vscode/

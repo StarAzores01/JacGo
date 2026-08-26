@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<script>try{var t=localStorage.getItem('jac-theme');if(t==='dark'||t==='light')document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>JAC Go — Your Southern Luzon journey, all in one place</title>
+<meta name="description" content="JAC Go is the digital travel dashboard for JAC Liner passengers: book tickets, track your bus live, check destination weather, and manage trips across Southern Luzon." />
+<link rel="icon" href="favicon.svg" type="image/svg+xml" />
+<link rel="manifest" href="manifest.json" />
+<link rel="stylesheet" href="css/base.css" />
+<link rel="stylesheet" href="css/components.css" />
+<link rel="stylesheet" href="css/chatbot.css" />
+<link rel="stylesheet" href="css/landing.css" />
+</head>
+<body>
+
+<header class="site-header">
+  <a class="brand" href="index.html" style="display:flex;align-items:center;gap:10px;">
+    <div class="brand-mark" style="width:40px;height:40px;border-radius:6px;background:#fff;display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;padding:2px;"><img src="assets/images/jaclinerlogo.jpg" alt="JAC Go logo" style="width:100%;height:100%;object-fit:contain;" /></div>
+    <span style="font-family:var(--font-display);font-size:20px;font-weight:800;">JAC GO</span>
+  </a>
+  <nav class="site-nav">
+    <a href="#features">Features</a>
+    <a href="#network">Network</a>
+    <a href="pages/fares.html">Fares</a>
+    <a href="pages/dashboard.html">Open Dashboard</a>
+  </nav>
+  <button class="theme-toggle standalone" id="theme-toggle" type="button" aria-label="Toggle dark mode"><svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4" /><path d="M12 2v2" /><path d="M12 20v2" /><path d="m4.93 4.93 1.41 1.41" /><path d="m17.66 17.66 1.41 1.41" /><path d="M2 12h2" /><path d="M20 12h2" /><path d="m6.34 17.66-1.41 1.41" /><path d="m19.07 4.93-1.41 1.41" /></svg><svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" /></svg></button>
+</header>
+
+<section class="hero">
+  <div>
+    <span class="hero-eyebrow">● Your terminal, in your pocket</span>
+    <h1>Closer to home, <em>from wherever you are.</em></h1>
+    <p class="lead">Book tickets, track your bus live, check the weather at your stop, and manage every trip on JAC Liner — your whole Southern Luzon terminal, now in your pocket.</p>
+    <div class="hero-actions">
+      <a class="btn btn-primary btn-lg" href="pages/dashboard.html">Open the Dashboard</a>
+      <a class="btn btn-outline btn-lg" href="#features">See what's inside</a>
+    </div>
+  </div>
+  <div class="hero-board">
+    <div class="flap-board" id="flap-board">
+      <div class="flap-group">
+        <span class="flap-label">Route</span>
+        <div class="flap-row">
+          <div class="flap wide" data-flap="origin">PASAY</div>
+          <div class="flap wide">→</div>
+          <div class="flap wide" data-flap="destination">LUCENA</div>
+        </div>
+      </div>
+      <div class="flap-group">
+        <span class="flap-label">Time</span>
+        <div class="flap-row" data-flap-row="time"></div>
+      </div>
+      <div class="flap-group">
+        <span class="flap-label">Gate</span>
+        <div class="flap-row"><div class="flap wide" data-flap="gate">BAY 4</div></div>
+      </div>
+      <div class="flap-status">ON TIME</div>
+    </div>
+  </div>
+</section>
+
+<section class="section trust-section">
+  <div class="section-head">
+    <span class="card-eyebrow">Why JAC Go</span>
+    <h2>Everything Alagang JAC stands for — now in your pocket.</h2>
+  </div>
+  <div class="trust-grid">
+    <div class="trust-card">
+      <div class="trust-mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0" />
+  <circle cx="12" cy="10" r="3" />
+</svg></div>
+      <h3>Always know where your bus is</h3>
+      <p>Live GPS tracking and real-time ETAs, so you're never guessing when to head to the gate.</p>
+    </div>
+    <div class="trust-card">
+      <div class="trust-mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z" />
+  <path d="M13 5v2" />
+  <path d="M13 17v2" />
+  <path d="M13 11v2" />
+</svg></div>
+      <h3>Book once, breeze through</h3>
+      <p>QR e-tickets, saved itineraries, and fares — all in one dashboard. No paper stubs, no lines.</p>
+    </div>
+    <div class="trust-card">
+      <div class="trust-mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z" />
+</svg></div>
+      <h3>Rewards for every ride</h3>
+      <p>Earn Alagang JAC points on every fare, then redeem them for upgrades and priority boarding.</p>
+    </div>
+  </div>
+</section>
+
+<div class="strip">
+  <div class="stat"><b>400+</b><span>Buses in the fleet</span></div>
+  <div class="stat"><b>4</b><span>Provinces served</span></div>
+  <div class="stat"><b>1993</b><span>Serving Southern Luzon since</span></div>
+  <div class="stat"><b>12</b><span>Tools in one dashboard</span></div>
+</div>
+
+<section class="section" id="features">
+  <div class="section-head">
+    <span class="card-eyebrow">What's inside</span>
+    <h2>Everything a JAC passenger needs, before and during the trip.</h2>
+  </div>
+  <div class="feature-grid">
+    <div class="feature-card"><div class="fi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <circle cx="12" cy="12" r="10" />
+  <path d="m16.24 7.76-1.804 5.411a2 2 0 0 1-1.265 1.265L7.76 16.24l1.804-5.411a2 2 0 0 1 1.265-1.265z" />
+</svg></div><h3>Trip Planner</h3><p>Build multi-leg trips, including bus-to-ferry connections to Marinduque, and save them for later.</p></div>
+    <div class="feature-card"><div class="fi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z" />
+  <path d="M13 5v2" />
+  <path d="M13 17v2" />
+  <path d="M13 11v2" />
+</svg></div><h3>Tickets &amp; QR Boarding</h3><p>Book, reschedule, or cancel — and board with a QR e-ticket instead of a paper stub.</p></div>
+    <div class="feature-card"><div class="fi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0" />
+  <circle cx="12" cy="10" r="3" />
+</svg></div><h3>Live Bus Tracking</h3><p>See your booked bus on the map in real time, with a live ETA to your stop.</p></div>
+    <div class="feature-card"><div class="fi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M12 2v2" />
+  <path d="m4.93 4.93 1.41 1.41" />
+  <path d="M20 12h2" />
+  <path d="m19.07 4.93-1.41 1.41" />
+  <path d="M15.947 12.65a4 4 0 0 0-5.925-4.128" />
+  <path d="M13 22H7a5 5 0 1 1 4.9-6H13a3 3 0 0 1 0 6Z" />
+</svg></div><h3>Destination Weather</h3><p>A 5-day forecast for your destination, auto-surfaced as your travel date gets close.</p></div>
+    <div class="feature-card"><div class="fi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M2 4v16" />
+  <path d="M2 8h18a2 2 0 0 1 2 2v10" />
+  <path d="M2 17h20" />
+  <path d="M6 8v9" />
+</svg></div><h3>Accommodation</h3><p>Partner hotels near JAC terminals, filterable by price and rating.</p></div>
+    <div class="feature-card"><div class="fi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M11 21.73a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73z" />
+  <path d="M12 22V12" />
+  <polyline points="3.29 7 12 12 20.71 7" />
+  <path d="m7.5 4.27 9 5.15" />
+</svg></div><h3>Express Padala</h3><p>Book a cargo pickup and track your parcel between any two JAC terminals.</p></div>
+    <div class="feature-card"><div class="fi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M11.525 2.295a.53.53 0 0 1 .95 0l2.31 4.679a2.123 2.123 0 0 0 1.595 1.16l5.166.756a.53.53 0 0 1 .294.904l-3.736 3.638a2.123 2.123 0 0 0-.611 1.878l.882 5.14a.53.53 0 0 1-.771.56l-4.618-2.428a2.122 2.122 0 0 0-1.973 0L6.396 21.01a.53.53 0 0 1-.77-.56l.881-5.139a2.122 2.122 0 0 0-.611-1.879L2.16 9.795a.53.53 0 0 1 .294-.906l5.165-.755a2.122 2.122 0 0 0 1.597-1.16z" />
+</svg></div><h3>Alagang JAC Points</h3><p>Earn points on every fare and redeem them for upgrades, vouchers, and priority boarding.</p></div>
+    <div class="feature-card"><div class="fi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M14.106 5.553a2 2 0 0 0 1.788 0l3.659-1.83A1 1 0 0 1 21 4.619v12.764a1 1 0 0 1-.553.894l-4.553 2.277a2 2 0 0 1-1.788 0l-4.212-2.106a2 2 0 0 0-1.788 0l-3.659 1.83A1 1 0 0 1 3 19.381V6.618a1 1 0 0 1 .553-.894l4.553-2.277a2 2 0 0 1 1.788 0z" />
+  <path d="M15 5.764v15" />
+  <path d="M9 3.236v15" />
+</svg></div><h3>Terminals &amp; Directions</h3><p>Find every terminal — Pasay, Cubao, Calamba, Lucena — with facilities and directions.</p></div>
+  </div>
+</section>
+
+<section class="section" id="network" style="padding-top:0;">
+  <div class="section-head">
+    <span class="card-eyebrow">Fare preview</span>
+    <h2>Real routes, real fares — no guesswork.</h2>
+  </div>
+  <div class="card">
+    <table class="fare-table">
+      <thead><tr><th>Route</th><th>Class</th><th>Duration</th><th>Fare</th></tr></thead>
+      <tbody>
+        <tr><td>Pasay – Lucena</td><td>Deluxe</td><td>2h 30m</td><td class="fare-amount">₱450</td></tr>
+        <tr><td>Cubao – Calamba</td><td>Ordinary</td><td>1h 30m</td><td class="fare-amount">₱180</td></tr>
+        <tr><td>Pasay – Batangas City</td><td>Deluxe</td><td>2h 20m</td><td class="fare-amount">₱380</td></tr>
+      </tbody>
+    </table>
+    <div style="margin-top:16px;"><a class="btn btn-outline" href="pages/fares.html">See all fares →</a></div>
+  </div>
+</section>
+
+<section class="section destinations" style="padding-top:0;">
+  <div class="section-head">
+    <span class="card-eyebrow">Popular destinations</span>
+    <h2>Southern Luzon, worth the ride.</h2>
+  </div>
+  <div class="dest-scroll">
+    <div class="dest-card">
+      <img class="dest-img" src="/assets/images/calamba-hotsprings.jpg" alt="Hot spring resort pools in Calamba, Laguna" loading="lazy" />
+      <div class="dest-body">
+        <h4>Calamba Hot Springs</h4>
+        <p>Laguna · foot of Mt. Makiling</p>
+      </div>
+    </div>
+    <div class="dest-card">
+      <img class="dest-img" src="/assets/images/lucena-quezon-gateway.jpg" alt="Lucena City street view, Quezon province" loading="lazy" />
+      <div class="dest-body">
+        <h4>Lucena City</h4>
+        <p>Quezon · JAC Liner's provincial hub</p>
+      </div>
+    </div>
+    <div class="dest-card">
+      <img class="dest-img" src="/assets/images/anilao-batangas-dive.jpg" alt="Anilao coastline and dive cove, Batangas" loading="lazy" />
+      <div class="dest-body">
+        <h4>Anilao</h4>
+        <p>Batangas · dive coves &amp; beach towns</p>
+      </div>
+    </div>
+    <div class="dest-card">
+      <img class="dest-img" src="/assets/images/marinduque-moriones.jpg" alt="Marinduque island coastline, home of the Moriones Festival" loading="lazy" />
+      <div class="dest-body">
+        <h4>Marinduque</h4>
+        <p>Bus-to-ferry · home of the Moriones Festival</p>
+      </div>
+    </div>
+    <div class="dest-card">
+      <img class="dest-img" src="/assets/images/lucban-pahiyas.jpg" alt="Lucban town during the Pahiyas festival, Quezon" loading="lazy" />
+      <div class="dest-body">
+        <h4>Lucban</h4>
+        <p>Quezon · Pahiyas festival town</p>
+      </div>
+    </div>
+    <div class="dest-card">
+      <img class="dest-img" src="/assets/images/tayabas-heritage.jpg" alt="Tayabas heritage church and plaza, Quezon" loading="lazy" />
+      <div class="dest-body">
+        <h4>Tayabas</h4>
+        <p>Quezon · heritage churches &amp; plazas</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="cta-band">
+  <h2>Ready to plan your next trip?</h2>
+  <a class="btn btn-dark btn-lg" href="pages/dashboard.html">Open the Dashboard</a>
+</div>
+
+<footer class="site-footer">
+  <span>© 2026 JAC Go — a concept dashboard for JAC Liner Inc.</span>
+  <span>UI/UX case study · Not an official JAC Liner product</span>
+</footer>
+
+<script src="js/data.js"></script>
+<script src="js/interactions.js"></script>
+<script src="js/chatbot.js"></script>
+<script src="js/theme.js"></script>
+<script src="js/lang.js"></script>
+</body>
+</html>

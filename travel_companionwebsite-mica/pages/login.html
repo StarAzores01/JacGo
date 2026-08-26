@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<script>try{var t=localStorage.getItem('jac-theme');if(t==='dark'||t==='light')document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Log in — JAC Go</title>
+<link rel="icon" href="../favicon.svg" type="image/svg+xml" />
+<link rel="stylesheet" href="../css/base.css" />
+<link rel="stylesheet" href="../css/components.css" />
+</head>
+<body data-page="login">
+
+<button class="theme-toggle standalone floating" id="theme-toggle" type="button" aria-label="Toggle dark mode"><svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4" /><path d="M12 2v2" /><path d="M12 20v2" /><path d="m4.93 4.93 1.41 1.41" /><path d="m17.66 17.66 1.41 1.41" /><path d="M2 12h2" /><path d="M20 12h2" /><path d="m6.34 17.66-1.41 1.41" /><path d="m19.07 4.93-1.41 1.41" /></svg><svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" /></svg></button>
+
+<div class="auth-wrap">
+  <div class="card" style="width:100%;max-width:380px;">
+    <a href="../index.html" style="display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:22px;">
+      <div style="width:34px;height:34px;border-radius:8px;background:var(--red);display:flex;align-items:center;justify-content:center;font-family:var(--font-display);font-weight:800;font-size:18px;color:#fff;">J</div>
+      <span style="font-family:var(--font-display);font-size:20px;font-weight:800;color:var(--black);">JAC GO</span>
+    </a>
+
+    <h1 style="font-size:20px;text-align:center;margin-bottom:4px;">Welcome back</h1>
+    <p style="text-align:center;color:var(--text-muted);font-size:13px;margin:0 0 6px;">Log in to continue to your dashboard.</p>
+    <p style="text-align:center;color:var(--text-muted);font-size:11.5px;margin:0 0 20px;font-family:var(--font-mono);">Demo login: mika@jacliner.demo / demo1234</p>
+
+    <form id="login-form">
+      <div class="field">
+        <label>Email</label>
+        <input type="email" name="email" required placeholder="you@example.com" />
+      </div>
+      <div class="field">
+        <label>Password</label>
+        <div class="password-wrap">
+          <input type="password" name="password" required placeholder="••••••••" />
+          <button type="button" class="password-toggle" aria-label="Show password">
+            <span class="icon-eye"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0" />
+  <circle cx="12" cy="12" r="3" />
+</svg></span>
+            <span class="icon-eye-off"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M10.733 5.076a10.744 10.744 0 0 1 11.205 6.575 1 1 0 0 1 0 .696 10.747 10.747 0 0 1-1.444 2.49" />
+  <path d="M14.084 14.158a3 3 0 0 1-4.242-4.242" />
+  <path d="M17.479 17.499a10.75 10.75 0 0 1-15.417-5.151 1 1 0 0 1 0-.696 10.75 10.75 0 0 1 4.446-5.143" />
+  <path d="m2 2 20 20" />
+</svg></span>
+          </button>
+        </div>
+      </div>
+      <div style="text-align:right;margin:-8px 0 16px;">
+        <a href="#" id="forgot-password" style="font-size:12.5px;color:var(--text-muted);">Forgot password?</a>
+      </div>
+      <p id="login-error" style="color:var(--red);font-size:12.5px;margin:-6px 0 14px;display:none;"></p>
+      <button class="btn btn-primary btn-block" type="submit">Log in</button>
+    </form>
+
+    <p style="text-align:center;font-size:13px;color:var(--text-muted);margin:18px 0 0;">New here? <a href="signup.html" style="color:var(--red);font-weight:600;">Create an account</a></p>
+  </div>
+</div>
+
+<script src="../js/data.js"></script>
+<script src="../js/auth.js"></script>
+<script src="../js/interactions.js"></script>
+<script src="../js/theme.js"></script>
+</body>
+</html>
