@@ -3,6 +3,13 @@
 <head>
 <meta charset="UTF-8" />
 <script>try{var t=localStorage.getItem('jac-theme');if(t==='dark'||t==='light')document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+<!-- Auth guard: hide this protected page until nav.js confirms a Supabase
+     session and removes .auth-pending (see css/base.css). no-store is a
+     best-effort nudge against browser bfcache on a static host that can't
+     set real HTTP headers; nav.js's pageshow listener is what actually
+     re-checks the session if a cached view gets restored anyway. -->
+<meta http-equiv="Cache-Control" content="no-store" />
+<script>document.documentElement.classList.add('auth-pending');</script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Terminals &amp; Directions — JAC Go</title>
 <link rel="icon" href="../favicon.svg" type="image/svg+xml" />
@@ -142,58 +149,72 @@
     </header>
 
     <main class="view">
-      <div class="grid grid-2">
-
-        <div class="photo-card">
-          <img class="thumb" src="/assets/images/buendia.png" alt="Pasay (Buendia) Terminal building" loading="lazy" />
-          <div class="body">
-            <h3>Pasay (Buendia) Terminal</h3>
-            <p style="font-size:12.5px;color:var(--text-muted);margin:6px 0 10px;">Sen. Gil J. Puyat Ave. cor. Donada St., Pasay</p>
-            <div style="display:flex;gap:6px;flex-wrap:wrap;">
-              <span class="pill ok" data-i18n="term.ticketing">Ticketing</span><span class="pill ok" data-i18n="term.padala">Padala</span><span class="pill ok" data-i18n="term.wifi">WiFi</span>
-            </div>
-            <a class="btn btn-outline" style="margin-top:12px;" data-i18n="term.getDir" href="track-bus.html">Get directions</a>
-          </div>
-        </div>
-
-        <div class="photo-card">
-          <img class="thumb" src="/assets/images/cubao.jpg" alt="Cubao Terminal building" loading="lazy" />
-          <div class="body">
-            <h3>Cubao Terminal</h3>
-            <p style="font-size:12.5px;color:var(--text-muted);margin:6px 0 10px;">Aurora Blvd., Cubao, Quezon City</p>
-            <div style="display:flex;gap:6px;flex-wrap:wrap;">
-              <span class="pill ok" data-i18n="term.ticketing">Ticketing</span><span class="pill ok" data-i18n="term.wifi">WiFi</span>
-            </div>
-            <a class="btn btn-outline" style="margin-top:12px;" data-i18n="term.getDir" href="track-bus.html">Get directions</a>
-          </div>
-        </div>
-
-        <div class="photo-card">
-          <img class="thumb" src="/assets/images/calamba.webp" alt="Calamba Terminal building" loading="lazy" />
-          <div class="body">
-            <h3>Calamba Terminal</h3>
-            <p style="font-size:12.5px;color:var(--text-muted);margin:6px 0 10px;">Brgy. 1, Crossing, Calamba City, Laguna</p>
-            <div style="display:flex;gap:6px;flex-wrap:wrap;">
-              <span class="pill ok" data-i18n="term.ticketing">Ticketing</span><span class="pill ok" data-i18n="term.padala">Padala</span>
-            </div>
-            <a class="btn btn-outline" style="margin-top:12px;" data-i18n="term.getDir" href="track-bus.html">Get directions</a>
-          </div>
-        </div>
-
-        <div class="photo-card">
-          <img class="thumb" src="/assets/images/lucenagrand.jpg" alt="Lucena Grand Central Terminal building" loading="lazy" />
-          <div class="body">
-            <h3>Lucena Grand Central Terminal</h3>
-            <p style="font-size:12.5px;color:var(--text-muted);margin:6px 0 10px;">Lucena City, Quezon</p>
-            <div style="display:flex;gap:6px;flex-wrap:wrap;">
-              <span class="pill ok" data-i18n="term.ticketing">Ticketing</span><span class="pill ok" data-i18n="term.padala">Padala</span><span class="pill ok" data-i18n="term.ferry">Ferry transfer</span>
-            </div>
-            <a class="btn btn-outline" style="margin-top:12px;" data-i18n="term.getDir" href="track-bus.html">Get directions</a>
-          </div>
-        </div>
-
-      </div>
+      <div class="grid grid-2" id="terminals-grid"></div>
+      <p id="terminals-empty" style="display:none;text-align:center;padding:24px 20px;color:var(--text-muted);font-size:13.5px;">
+        No terminals listed yet.
+      </p>
     </main>
+
+    <script>
+    (function () {
+      function escHtml(s) { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+
+      // Curated photos for the four original terminals, matched by name.
+      // Anything without a match falls back to a generic placeholder.
+      var PHOTOS = {
+        "Pasay (Buendia) Terminal":      "/assets/images/buendia.png",
+        "Cubao Terminal":                "/assets/images/cubao.jpg",
+        "Calamba Terminal":              "/assets/images/calamba.webp",
+        "Lucena Grand Central Terminal": "/assets/images/lucenagrand.jpg",
+      };
+      var PLACEHOLDER_PHOTO = "/assets/images/jaclinerlogo.jpg";
+
+      // Same tag -> i18n key mapping term.html's translations already cover.
+      var TAG_I18N = { "Ticketing": "term.ticketing", "Padala": "term.padala", "WiFi": "term.wifi", "Ferry transfer": "term.ferry" };
+
+      function cardHtml(t) {
+        var photo = PHOTOS[t.name] || PLACEHOLDER_PHOTO;
+        var tags = (t.tags || []).map(function (tag) {
+          var key = TAG_I18N[tag];
+          return '<span class="pill ok"' + (key ? ' data-i18n="' + key + '"' : '') + '>' + escHtml(tag) + '</span>';
+        }).join("");
+        return '<div class="photo-card">'
+          + '<img class="thumb" src="' + photo + '" alt="' + escHtml(t.name) + ' building" loading="lazy" />'
+          + '<div class="body">'
+          + '<h3>' + escHtml(t.name) + '</h3>'
+          + '<p style="font-size:12.5px;color:var(--text-muted);margin:6px 0 10px;">' + escHtml(t.address) + '</p>'
+          + '<div style="display:flex;gap:6px;flex-wrap:wrap;">' + tags + '</div>'
+          + '<a class="btn btn-outline" style="margin-top:12px;" data-i18n="term.getDir" href="track-bus.html">Get directions</a>'
+          + '</div></div>';
+      }
+
+      async function loadTerminals() {
+        var grid = document.getElementById("terminals-grid");
+        var empty = document.getElementById("terminals-empty");
+
+        var { data, error } = await supabaseClient
+          .from("terminals")
+          .select("*")
+          .order("name", { ascending: true });
+        if (error) { console.warn("terminals.html: couldn't load terminals.", error); return; }
+
+        if (!data || !data.length) {
+          empty.style.display = "";
+          return;
+        }
+        empty.style.display = "none";
+        grid.innerHTML = data.map(cardHtml).join("");
+
+        if (typeof window.applyLang === "function") {
+          var locale = "en";
+          try { locale = localStorage.getItem("jac-lang") || "en"; } catch (e) {}
+          window.applyLang(locale);
+        }
+      }
+
+      loadTerminals();
+    })();
+    </script>
 
   </div><!-- /.main -->
 </div><!-- /.app-shell -->
@@ -224,6 +245,9 @@
 </svg></span>Profile</a>
 </nav>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="../js/config.js"></script>
+<script src="../js/supabase-client.js"></script>
 <script src="../js/data.js"></script>
 <script src="../js/auth.js"></script>
 <script src="../js/nav.js"></script>

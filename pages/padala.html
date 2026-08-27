@@ -3,6 +3,13 @@
 <head>
 <meta charset="UTF-8" />
 <script>try{var t=localStorage.getItem('jac-theme');if(t==='dark'||t==='light')document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+<!-- Auth guard: hide this protected page until nav.js confirms a Supabase
+     session and removes .auth-pending (see css/base.css). no-store is a
+     best-effort nudge against browser bfcache on a static host that can't
+     set real HTTP headers; nav.js's pageshow listener is what actually
+     re-checks the session if a cached view gets restored anyway. -->
+<meta http-equiv="Cache-Control" content="no-store" />
+<script>document.documentElement.classList.add('auth-pending');</script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Padala (Cargo) — JAC Go</title>
 <link rel="icon" href="../favicon.svg" type="image/svg+xml" />
@@ -149,36 +156,112 @@
           <form id="padala-form" style="margin-top:14px;">
             <div class="field-row">
               <div class="field"><label>From terminal</label>
-                <select><option>Pasay (Buendia) Terminal</option><option>Cubao Terminal</option><option>Calamba Terminal</option><option>Lucena Grand Central Terminal</option></select>
+                <select name="from"><option>Pasay (Buendia) Terminal</option><option>Cubao Terminal</option><option>Calamba Terminal</option><option>Lucena Grand Central Terminal</option></select>
               </div>
               <div class="field"><label>To terminal</label>
-                <select><option>Lucena Grand Central Terminal</option><option>Cubao Terminal</option><option>Calamba Terminal</option><option>Pasay (Buendia) Terminal</option></select>
+                <select name="to"><option>Lucena Grand Central Terminal</option><option>Cubao Terminal</option><option>Calamba Terminal</option><option>Pasay (Buendia) Terminal</option></select>
               </div>
             </div>
             <div class="field"><label>Package weight (kg)</label><input type="number" name="weight" value="2" min="0.5" step="0.5" /></div>
-            <button class="btn btn-primary btn-block" type="submit">Get pickup quote</button>
+            <button class="btn btn-primary btn-block" type="submit">Book pickup</button>
             <p id="padala-quote" style="margin-top:10px;font-size:13px;color:var(--text-muted);"></p>
           </form>
         </div>
         <div class="card">
           <span class="card-eyebrow">Track a Package</span>
-          <div class="list-row">
-            <div style="flex:1;">
-              <strong style="font-size:13.5px;font-family:var(--font-mono);">PAD-55210</strong>
-              <div style="font-size:12px;color:var(--text-muted);">Pasay → Lucena · 3.2kg</div>
-            </div>
-            <span class="pill warn">In transit</span>
-          </div>
-          <div class="list-row">
-            <div style="flex:1;">
-              <strong style="font-size:13.5px;font-family:var(--font-mono);">PAD-54810</strong>
-              <div style="font-size:12px;color:var(--text-muted);">Cubao → Calamba · 1.0kg</div>
-            </div>
-            <span class="pill ok">Delivered</span>
-          </div>
+          <div id="padala-history-list"></div>
+          <p id="padala-history-empty" style="color:var(--text-muted);font-size:12.5px;display:none;">No shipments yet.</p>
         </div>
       </div>
     </main>
+
+    <script>
+    (function () {
+      function escHtml(s) { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+
+      var STATUS_PILL = { "In transit": "warn", "Delivered": "ok", "Cancelled": "alert" };
+
+      function historyRowHtml(p) {
+        var pillClass = STATUS_PILL[p.status] || "warn";
+        var fromShort = (p.origin || "").split(" ")[0];
+        var toShort = (p.destination || "").split(" ")[0];
+        return '<div class="list-row">'
+          + '<div style="flex:1;">'
+          + '<strong style="font-size:13.5px;font-family:var(--font-mono);">' + escHtml(p.code) + '</strong>'
+          + '<div style="font-size:12px;color:var(--text-muted);">' + escHtml(fromShort) + ' → ' + escHtml(toShort) + ' · ' + Number(p.weight_kg).toFixed(1) + 'kg</div>'
+          + '</div>'
+          + '<span class="pill ' + pillClass + '">' + escHtml(p.status) + '</span>'
+          + '</div>';
+      }
+
+      var currentUserId = null;
+
+      async function loadHistory() {
+        if (typeof getCurrentUser !== "function") return;
+        var user = await getCurrentUser();
+        if (!user) return;
+        currentUserId = user.id;
+
+        var { data, error } = await supabaseClient
+          .from("padala_history")
+          .select("*")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false });
+        if (error) { console.warn("padala.html: couldn't load shipment history.", error); return; }
+
+        var list = document.getElementById("padala-history-list");
+        var empty = document.getElementById("padala-history-empty");
+        if (!data || !data.length) {
+          list.innerHTML = "";
+          empty.style.display = "";
+          return;
+        }
+        empty.style.display = "none";
+        list.innerHTML = data.map(historyRowHtml).join("");
+      }
+
+      function generateCode() {
+        return "PAD-" + Math.floor(10000 + Math.random() * 90000);
+      }
+
+      document.getElementById("padala-form").addEventListener("submit", async function (e) {
+        e.preventDefault();
+        var form = e.target;
+        var from = form.querySelector('[name="from"]').value;
+        var to = form.querySelector('[name="to"]').value;
+        var weight = parseFloat(form.querySelector('[name="weight"]').value) || 1;
+        var out = document.getElementById("padala-quote");
+        var submitBtn = form.querySelector('button[type="submit"]');
+
+        if (!currentUserId) { if (out) out.textContent = "Please log in again to book a pickup."; return; }
+
+        var fee = Math.max(60, Math.round(weight * 35));
+        submitBtn.disabled = true;
+
+        var { error } = await supabaseClient.from("padala_history").insert({
+          user_id: currentUserId,
+          code: generateCode(),
+          origin: from,
+          destination: to,
+          weight_kg: weight,
+          status: "In transit",
+        });
+
+        submitBtn.disabled = false;
+
+        if (error) {
+          console.error("padala.html: booking failed.", error);
+          if (out) out.textContent = "Sorry, that booking didn't go through. Please try again.";
+          return;
+        }
+
+        if (out) out.textContent = "Pickup booked — estimated fee: ₱" + fee;
+        loadHistory();
+      });
+
+      loadHistory();
+    })();
+    </script>
   </div>
 </div>
 
@@ -207,6 +290,9 @@
 </svg></span>Profile</a>
 </nav>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="../js/config.js"></script>
+<script src="../js/supabase-client.js"></script>
 <script src="../js/data.js"></script>
 <script src="../js/auth.js"></script>
 <script src="../js/nav.js"></script>

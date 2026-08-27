@@ -1,33 +1,33 @@
-/* data.js — mock data for the JAC Go demo (stands in for a real API) */
+/* data.js — what's left of the JAC Go mock DB after the Supabase migration.
+ *
+ * Everything user-scoped or reference-data-shaped (user, users, nextTrip,
+ * trips, fares, accommodation, terminals, rewards, notifications,
+ * padalaHistory) now lives in Postgres — see supabase/migrations/ and
+ * js/auth.js, js/interactions.js, and pages/*.html's own inline scripts
+ * for the live queries that replaced each of those keys.
+ *
+ * What's left here is genuinely still static/demo-only:
+ *   - weather: no live weather API is wired up yet. Shown on
+ *     dashboard.html (fillDashboardWidgets) and weather.html.
+ *   - activities: dashboard.html's "Local Activities & Dining" widget.
+ *     This is the same shape pipeline/output/pois.json produces, and
+ *     will eventually be replaced by the `pois` table once that pipeline
+ *     import (Phase 4, per supabase/migrations/0001_init.sql) lands —
+ *     not done yet, so this stays mock for now.
+ *   - packingList: static app copy (a checklist), not user or reference
+ *     data — there was never a real backend for this to migrate to.
+ *
+ * Known remaining gap: js/track-map.js (pages/track-bus.html) still reads
+ * DB.trips[0] for its map widget. track-bus.html wasn't one of the pages
+ * in this migration pass, so that key was removed here rather than kept
+ * on its account — track-map.js already guards for DB.trips being
+ * missing (`(typeof DB !== "undefined" && DB.trips && DB.trips[0]) || {}`),
+ * so it degrades to a blank trip on the map instead of erroring, but it
+ * will need the same live-query treatment as the other pages to actually
+ * show real data.
+ */
 
 const DB = {
-  user: {
-    name: "Mika Santos",
-    tier: "Gold",
-    points: 4280,
-  },
-
-  /* Demo accounts for login/signup (see auth.js) */
-  users: [
-    { name: "Mika Santos", email: "mika@jacliner.demo", password: "demo1234" },
-  ],
-
-  nextTrip: {
-    origin: "PASAY",
-    destination: "LUCENA",
-    date: "AUG 17",
-    time: "06:45",
-    gate: "BAY 4",
-    seat: "12A",
-    status: "ON TIME",
-  },
-
-  trips: [
-    { id: "t1", route: "Pasay (Buendia) → Lucena Grand Central", date: "Aug 17, 2026", time: "06:45 AM", seat: "12A", klass: "Deluxe",   fare: 450, status: "upcoming",  code: "JAC-88213" },
-    { id: "t2", route: "Cubao → Calamba City",                   date: "Aug 22, 2026", time: "01:15 PM", seat: "07C", klass: "Ordinary", fare: 180, status: "upcoming",  code: "JAC-90142" },
-    { id: "t3", route: "Lucena → Pasay (Buendia)",               date: "Jul 30, 2026", time: "05:00 PM", seat: "03B", klass: "Deluxe",   fare: 450, status: "completed", code: "JAC-81920" },
-  ],
-
   weather: {
     origin:      { place: "Pasay",  temp: 30, desc: "Partly cloudy" },
     destination: { place: "Lucena", temp: 32, desc: "Sunny — pack light" },
@@ -39,48 +39,6 @@ const DB = {
       { day: "Fri", temp: 31, ic: "sun" },
     ],
   },
-
-  fares: [
-    { route: "Pasay – Lucena",              klass: "Ordinary", duration: "2h 45m", price: 320 },
-    { route: "Pasay – Lucena",              klass: "Deluxe",   duration: "2h 30m", price: 450 },
-    { route: "Cubao – Calamba",             klass: "Ordinary", duration: "1h 30m", price: 180 },
-    { route: "Cubao – Santa Cruz, Laguna",  klass: "Deluxe",   duration: "2h 10m", price: 260 },
-    { route: "Pasay – Batangas City",       klass: "Deluxe",   duration: "2h 20m", price: 380 },
-    { route: "Lucena – Marinduque (bus+ferry)", klass: "Combo", duration: "4h 15m", price: 610 },
-  ],
-
-  accommodation: [
-    { name: "Terrazza Inn Lucena",    loc: "5 min from Grand Central Terminal", price: "₱1,800/night", rating: 4.4 },
-    { name: "Batangas Bay Hotel",     loc: "Near Batangas Port",                price: "₱2,300/night", rating: 4.2 },
-    { name: "Calamba Garden Suites",  loc: "10 min from terminal",              price: "₱1,450/night", rating: 4.0 },
-    { name: "RAYLux Hotel",     loc: "Lucena, Quezon",  price: null, rating: null, source: "osm", sourceUrl: "https://www.openstreetmap.org/node/13960806877" },
-    { name: "Hotel Oliva 88",   loc: "Calamba, Laguna", price: null, rating: null, source: "osm", sourceUrl: "https://www.openstreetmap.org/node/4778056921" },
-  ],
-
-  terminals: [
-    { name: "Pasay (Buendia) Terminal",      addr: "Sen. Gil J. Puyat Ave. cor. Donada St., Pasay", tags: ["Ticketing", "Padala", "WiFi"] },
-    { name: "Cubao Terminal",                addr: "Aurora Blvd., Cubao, Quezon City",               tags: ["Ticketing", "WiFi"] },
-    { name: "Calamba Terminal",              addr: "Brgy. 1, Crossing, Calamba City, Laguna",        tags: ["Ticketing", "Padala"] },
-    { name: "Lucena Grand Central Terminal", addr: "Lucena City, Quezon",                            tags: ["Ticketing", "Padala", "Ferry transfer"] },
-  ],
-
-  rewards: [
-    { title: "Free Seat Upgrade",      cost: 1200, desc: "Ordinary → Deluxe on any route" },
-    { title: "₱150 Fare Voucher",      cost: 900,  desc: "Valid on any Southern Luzon route" },
-    { title: "Priority Boarding Pass", cost: 600,  desc: "Skip the queue for 1 trip" },
-    { title: "Free Padala Pickup",     cost: 400,  desc: "One free cargo pickup, up to 5kg" },
-  ],
-
-  notifications: [
-    { type: "alert", text: "Your 06:45 AM trip to Lucena is on time. Gate opens 30 min before departure.", time: "Just now" },
-    { type: "info",  text: "Rainy season advisory: light delays possible on Batangas routes this week.",   time: "2h ago" },
-    { type: "promo", text: "Earn 2x points on Deluxe bookings this weekend.",                              time: "1d ago" },
-  ],
-
-  padalaHistory: [
-    { code: "PAD-55210", from: "Pasay", to: "Lucena",  status: "In transit", weight: "3.2kg" },
-    { code: "PAD-54810", from: "Cubao", to: "Calamba", status: "Delivered",  weight: "1.0kg" },
-  ],
 
   /* Activities near the upcoming destination (OSM/Wikipedia sourced where noted) */
   activities: [

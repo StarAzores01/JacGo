@@ -3,6 +3,13 @@
 <head>
 <meta charset="UTF-8" />
 <script>try{var t=localStorage.getItem('jac-theme');if(t==='dark'||t==='light')document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+<!-- Auth guard: hide this protected page until nav.js confirms a Supabase
+     session and removes .auth-pending (see css/base.css). no-store is a
+     best-effort nudge against browser bfcache on a static host that can't
+     set real HTTP headers; nav.js's pageshow listener is what actually
+     re-checks the session if a cached view gets restored anyway. -->
+<meta http-equiv="Cache-Control" content="no-store" />
+<script>document.documentElement.classList.add('auth-pending');</script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>My Tickets — JAC Go</title>
 
@@ -326,61 +333,17 @@
 
       <span class="card-eyebrow" data-i18n="tix.upcoming">Upcoming</span>
 
-      <div class="grid" style="margin-bottom:24px;">
-
-        <div class="ticket" data-ticket-id="JAC-88213">
-          <div>
-            <div class="ticket-route">Pasay (Buendia) → Lucena Grand Central</div>
-            <div class="ticket-meta">
-              <span>Aug 17, 2026, 06:45 AM</span>
-              <span>Seat 12A</span>
-              <span>Deluxe</span>
-              <span class="fare-amount">₱450</span>
-            </div>
-            <div style="margin-top:10px;display:flex;gap:8px;">
-              <button class="btn btn-outline btn-reschedule" data-route="Pasay (Buendia) → Lucena Grand Central" data-i18n="tix.reschedule">Reschedule</button>
-              <button class="btn btn-outline btn-cancel" data-i18n="tix.cancel">Cancel</button>
-            </div>
-          </div>
-          <div style="text-align:center;">
-            <div class="qr-box"></div>
-            <div style="font-family:var(--font-mono);font-size:11px;margin-top:6px;color:var(--text-muted);">JAC-88213</div>
-          </div>
-        </div>
-
-        <div class="ticket" data-ticket-id="JAC-90142">
-          <div>
-            <div class="ticket-route">Cubao → Calamba City</div>
-            <div class="ticket-meta">
-              <span>Aug 22, 2026, 01:15 PM</span>
-              <span>Seat 07C</span>
-              <span>Ordinary</span>
-              <span class="fare-amount">₱180</span>
-            </div>
-            <div style="margin-top:10px;display:flex;gap:8px;">
-              <button class="btn btn-outline btn-reschedule" data-route="Cubao → Calamba City" data-i18n="tix.reschedule">Reschedule</button>
-              <button class="btn btn-outline btn-cancel" data-i18n="tix.cancel">Cancel</button>
-            </div>
-          </div>
-          <div style="text-align:center;">
-            <div class="qr-box"></div>
-            <div style="font-family:var(--font-mono);font-size:11px;margin-top:6px;color:var(--text-muted);">JAC-90142</div>
-          </div>
-        </div>
-
+      <div class="grid" id="upcoming-tickets-grid" style="margin-bottom:24px;"></div>
+      <div class="card" id="upcoming-tickets-empty" style="display:none;margin-bottom:24px;text-align:center;padding:24px 20px;color:var(--text-muted);font-size:13.5px;">
+        No upcoming tickets — <a href="trip-planner.html">plan a trip</a>.
       </div>
 
       <!-- ============================ PAST TRIPS ============================ -->
 
       <span class="card-eyebrow" data-i18n="tix.past">Past Trips</span>
       <div class="card">
-        <div class="list-row">
-          <div style="flex:1;">
-            <strong style="font-size:13.5px;">Lucena → Pasay (Buendia)</strong>
-            <div style="font-size:12px;color:var(--text-muted);">Jul 30, 2026 · JAC-81920</div>
-          </div>
-          <span class="fare-amount" style="font-size:13px;">₱450</span>
-        </div>
+        <div id="past-trips-list"></div>
+        <p id="past-trips-empty" style="display:none;color:var(--text-muted);font-size:12.5px;">No past trips yet.</p>
       </div>
 
     </main>
@@ -461,6 +424,9 @@
 
 <!-- ============================ JAVASCRIPT ============================ -->
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="../js/config.js"></script>
+<script src="../js/supabase-client.js"></script>
 <script src="../js/data.js"></script>
 <script src="../js/auth.js"></script>
 <script src="../js/nav.js"></script>
@@ -469,22 +435,108 @@
 
 
 <script>
+(function () {
+
+/* ============================ LOAD & RENDER TICKETS ============================ */
+
+function escHtml(s) { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+
+function formatDateLong(dateStr) {
+  const d = new Date(dateStr + "T00:00:00");
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+}
+function formatTime12h(timeStr) {
+  const [h, m] = timeStr.split(":").map(Number);
+  const period = h >= 12 ? "PM" : "AM";
+  const h12 = ((h + 11) % 12) + 1;
+  return `${String(h12).padStart(2, "0")}:${String(m).padStart(2, "0")} ${period}`;
+}
+
+function ticketCardHtml(t) {
+  return `
+    <div class="ticket" data-trip-id="${t.id}" data-ticket-id="${escHtml(t.code)}">
+      <div>
+        <div class="ticket-route">${escHtml(t.origin)} → ${escHtml(t.destination)}</div>
+        <div class="ticket-meta">
+          <span>${formatDateLong(t.date)}, ${formatTime12h(t.time)}</span>
+          <span>Seat ${escHtml(t.seat)}</span>
+          <span>${escHtml(t.klass)}</span>
+          <span class="fare-amount">₱${Number(t.fare).toLocaleString()}</span>
+        </div>
+        <div style="margin-top:10px;display:flex;gap:8px;">
+          <button class="btn btn-outline btn-reschedule" data-i18n="tix.reschedule">Reschedule</button>
+          <button class="btn btn-outline btn-cancel" data-i18n="tix.cancel">Cancel</button>
+        </div>
+      </div>
+      <div style="text-align:center;">
+        <div class="qr-box"></div>
+        <div style="font-family:var(--font-mono);font-size:11px;margin-top:6px;color:var(--text-muted);">${escHtml(t.code)}</div>
+      </div>
+    </div>`;
+}
+
+function pastTripRowHtml(t) {
+  return `
+    <div class="list-row">
+      <div style="flex:1;">
+        <strong style="font-size:13.5px;">${escHtml(t.origin)} → ${escHtml(t.destination)}</strong>
+        <div style="font-size:12px;color:var(--text-muted);">${formatDateLong(t.date)} · ${escHtml(t.code)}</div>
+      </div>
+      <span class="fare-amount" style="font-size:13px;">₱${Number(t.fare).toLocaleString()}</span>
+    </div>`;
+}
+
+let currentUserId = null;
+
+async function loadTickets() {
+  if (typeof getCurrentUser !== "function") return;
+  const user = await getCurrentUser();
+  if (!user) return;
+  currentUserId = user.id;
+
+  const { data: trips, error } = await supabaseClient
+    .from("trips")
+    .select("*")
+    .eq("user_id", user.id)
+    .order("date", { ascending: true })
+    .order("time", { ascending: true });
+  if (error) { console.warn("tickets.html: couldn't load trips.", error); return; }
+
+  const upcoming = (trips || []).filter(t => t.status === "upcoming");
+  const past = (trips || []).filter(t => t.status === "completed" || t.status === "cancelled")
+    .sort((a, b) => (a.date + a.time < b.date + b.time ? 1 : -1)); // most recent past trip first
+
+  const upcomingGrid = document.getElementById("upcoming-tickets-grid");
+  const upcomingEmpty = document.getElementById("upcoming-tickets-empty");
+  upcomingGrid.innerHTML = upcoming.map(ticketCardHtml).join("");
+  upcomingEmpty.style.display = upcoming.length ? "none" : "";
+
+  const pastList = document.getElementById("past-trips-list");
+  const pastEmpty = document.getElementById("past-trips-empty");
+  pastList.innerHTML = past.map(pastTripRowHtml).join("");
+  pastEmpty.style.display = past.length ? "none" : "";
+
+  if (typeof window.applyLang === "function") {
+    let locale = "en";
+    try { locale = localStorage.getItem("jac-lang") || "en"; } catch (e) {}
+    window.applyLang(locale);
+  }
+}
 
 /* ============================ RESCHEDULE ============================ */
 
 let pendingRescheduleTicket = null;
 
-document.querySelectorAll(".btn-reschedule").forEach(btn => {
-  btn.addEventListener("click", function () {
-    const ticketEl = btn.closest(".ticket");
-    pendingRescheduleTicket = ticketEl;
-    const route = btn.dataset.route || ticketEl.querySelector(".ticket-route").textContent.trim();
-    document.getElementById("reschedule-route-label").textContent = route;
-    // Pre-fill today's date
-    const today = new Date().toISOString().split("T")[0];
-    document.getElementById("reschedule-date").value = today;
-    document.getElementById("reschedule-modal").classList.add("open");
-  });
+document.getElementById("upcoming-tickets-grid").addEventListener("click", function (e) {
+  const btn = e.target.closest(".btn-reschedule");
+  if (!btn) return;
+  const ticketEl = btn.closest(".ticket");
+  pendingRescheduleTicket = ticketEl;
+  const route = ticketEl.querySelector(".ticket-route").textContent.trim();
+  document.getElementById("reschedule-route-label").textContent = route;
+  const today = new Date().toISOString().split("T")[0];
+  document.getElementById("reschedule-date").value = today;
+  document.getElementById("reschedule-modal").classList.add("open");
 });
 
 function closeRescheduleModal() {
@@ -498,26 +550,38 @@ document.getElementById("reschedule-modal").addEventListener("click", function(e
   if (e.target === this) closeRescheduleModal();
 });
 
-document.getElementById("reschedule-confirm-btn").addEventListener("click", function () {
+document.getElementById("reschedule-confirm-btn").addEventListener("click", async function () {
   const date = document.getElementById("reschedule-date").value;
   const time = document.getElementById("reschedule-time").value;
   if (!date || !time) { alert("Please select a date and time."); return; }
+  if (!pendingRescheduleTicket || !currentUserId) { closeRescheduleModal(); return; }
 
-  // Format for display
+  const tripId = pendingRescheduleTicket.dataset.tripId;
+  const confirmBtn = this;
+  confirmBtn.disabled = true;
+
+  const { error } = await supabaseClient
+    .from("trips")
+    .update({ date, time })
+    .eq("id", tripId)
+    .eq("user_id", currentUserId);
+
+  confirmBtn.disabled = false;
+
+  if (error) {
+    console.error("tickets.html: reschedule failed.", error);
+    alert("Sorry, that reschedule didn't go through. Please try again.");
+    return;
+  }
+
   const d   = new Date(date + "T" + time);
   const fmt = d.toLocaleDateString("en-PH", { month:"short", day:"numeric", year:"numeric" })
             + ", "
             + d.toLocaleTimeString("en-PH", { hour:"2-digit", minute:"2-digit" });
 
-  // Update the ticket meta on the page
-  if (pendingRescheduleTicket) {
-    const metaSpan = pendingRescheduleTicket.querySelector(".ticket-meta span:first-child");
-    if (metaSpan) metaSpan.textContent = fmt;
-  }
-
   closeRescheduleModal();
+  await loadTickets();
 
-  // Show success dialog
   document.getElementById("reschedule-success-msg").textContent =
     "Your trip has been rescheduled to " + fmt + ".";
   document.getElementById("reschedule-success").classList.add("open");
@@ -531,11 +595,11 @@ document.getElementById("reschedule-success-ok").addEventListener("click", funct
 
 let pendingCancelTicket = null;
 
-document.querySelectorAll(".btn-cancel").forEach(btn => {
-  btn.addEventListener("click", function () {
-    pendingCancelTicket = btn.closest(".ticket");
-    document.getElementById("cancel-confirm").classList.add("open");
-  });
+document.getElementById("upcoming-tickets-grid").addEventListener("click", function (e) {
+  const btn = e.target.closest(".btn-cancel");
+  if (!btn) return;
+  pendingCancelTicket = btn.closest(".ticket");
+  document.getElementById("cancel-confirm").classList.add("open");
 });
 
 document.getElementById("cancel-no").addEventListener("click", function () {
@@ -543,13 +607,32 @@ document.getElementById("cancel-no").addEventListener("click", function () {
   document.getElementById("cancel-confirm").classList.remove("open");
 });
 
-document.getElementById("cancel-yes").addEventListener("click", function () {
-  if (pendingCancelTicket) {
-    pendingCancelTicket.style.transition = "opacity .3s ease, transform .3s ease";
-    pendingCancelTicket.style.opacity = "0";
-    pendingCancelTicket.style.transform = "translateX(12px)";
-    setTimeout(() => { if (pendingCancelTicket) pendingCancelTicket.remove(); pendingCancelTicket = null; }, 320);
+document.getElementById("cancel-yes").addEventListener("click", async function () {
+  if (pendingCancelTicket && currentUserId) {
+    const tripId = pendingCancelTicket.dataset.tripId;
+    const ticketEl = pendingCancelTicket;
+    const yesBtn = this;
+    yesBtn.disabled = true;
+
+    const { error } = await supabaseClient
+      .from("trips")
+      .update({ status: "cancelled" })
+      .eq("id", tripId)
+      .eq("user_id", currentUserId);
+
+    yesBtn.disabled = false;
+
+    if (error) {
+      console.error("tickets.html: cancel failed.", error);
+      alert("Sorry, that cancellation didn't go through. Please try again.");
+    } else {
+      ticketEl.style.transition = "opacity .3s ease, transform .3s ease";
+      ticketEl.style.opacity = "0";
+      ticketEl.style.transform = "translateX(12px)";
+      setTimeout(() => { loadTickets(); }, 320);
+    }
   }
+  pendingCancelTicket = null;
   document.getElementById("cancel-confirm").classList.remove("open");
 });
 
@@ -561,6 +644,9 @@ document.getElementById("cancel-confirm").addEventListener("click", function(e) 
   }
 });
 
+loadTickets();
+
+})();
 </script>
 <script src="../js/theme.js"></script>
 <script src="../js/lang.js"></script>

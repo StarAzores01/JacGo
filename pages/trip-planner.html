@@ -3,6 +3,13 @@
 <head>
 <meta charset="UTF-8" />
 <script>try{var t=localStorage.getItem('jac-theme');if(t==='dark'||t==='light')document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+<!-- Auth guard: hide this protected page until nav.js confirms a Supabase
+     session and removes .auth-pending (see css/base.css). no-store is a
+     best-effort nudge against browser bfcache on a static host that can't
+     set real HTTP headers; nav.js's pageshow listener is what actually
+     re-checks the session if a cached view gets restored anyway. -->
+<meta http-equiv="Cache-Control" content="no-store" />
+<script>document.documentElement.classList.add('auth-pending');</script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Trip Planner — JAC Go</title>
 <link rel="icon" href="../favicon.svg" type="image/svg+xml" />
@@ -174,13 +181,14 @@
           </div>
           <div class="field-row">
             <div class="field"><label data-i18n="plan.date">Date</label><input type="date" id="plan-date" value="2026-08-25" /></div>
+            <div class="field"><label>Time</label><input type="time" id="plan-time" value="06:45" /></div>
             <div class="field">
               <label data-i18n="plan.busType">Bus Type</label>
               <select id="plan-type">
                 <option value="all" data-i18n="plan.allTypes">All Bus Types</option>
                 <option value="Ordinary">Ordinary</option>
                 <option value="Deluxe">Deluxe</option>
-                <option value="Premier">Premier</option>
+                <option value="Combo">Combo</option>
               </select>
             </div>
             <div class="field"><label data-i18n="plan.passengers">Passengers</label><input type="number" id="plan-pax" min="1" value="1" /></div>
@@ -254,52 +262,128 @@
 
     <script>
     (function(){
-      /* ---- Bus schedule data (same as tickets.html) ---- */
-      var buses = [
-        { from:'Pasay (Buendia)', to:'Lucena Grand Central', date:'2026-08-25', dep:'06:45 AM', arr:'10:30 AM', type:'Deluxe',   fare:'₱450', seats:12 },
-        { from:'Pasay (Buendia)', to:'Lucena Grand Central', date:'2026-08-25', dep:'09:30 AM', arr:'01:15 PM', type:'Ordinary', fare:'₱350', seats:28 },
-        { from:'Pasay (Buendia)', to:'Lucena Grand Central', date:'2026-08-25', dep:'01:00 PM', arr:'04:45 PM', type:'Premier',  fare:'₱550', seats:8  },
-        { from:'Cubao',           to:'Calamba City',         date:'2026-08-25', dep:'08:00 AM', arr:'10:30 AM', type:'Ordinary', fare:'₱180', seats:19 },
-        { from:'Cubao',           to:'Calamba City',         date:'2026-08-25', dep:'01:15 PM', arr:'03:45 PM', type:'Deluxe',   fare:'₱250', seats:14 },
-      ];
+      /* ---- Search fares & book a trip ----
+       * The `fares` table (route/klass/duration/price — see
+       * supabase/migrations/0001_init.sql) is route pricing reference
+       * data, not a real per-departure schedule: there's no seat
+       * inventory or specific dep/arr time per bus to query. So "search"
+       * here matches fares whose free-text `route` mentions both the
+       * chosen from/to cities, and the date+time the results get booked
+       * against is the one the visitor picked in the form — not a
+       * fabricated "12 seats left" style number the schema can't back up.
+       */
+      function firstWord(s){ return (s || '').split(/[\s(]/)[0]; }
+      function escHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
-      /* ---- Search buses ---- */
-      document.getElementById('planner-form').addEventListener('submit', function(e){
+      var currentUserId = null;
+      (async function(){
+        if (typeof getCurrentUser === 'function') {
+          var user = await getCurrentUser();
+          if (user) currentUserId = user.id;
+        }
+      })();
+
+      function fareResultHtml(f){
+        return '<div class="bus-result" data-fare-id="' + f.id + '" data-klass="' + escHtml(f.klass) + '" data-price="' + f.price + '">'
+          +'<div class="bus-result-main">'
+          +'<div class="bus-result-route">' + escHtml(f.route) + '</div>'
+          +'<div class="bus-result-details"><span>' + escHtml(f.duration) + '</span><span>' + escHtml(f.klass) + '</span><span>₱' + Number(f.price).toLocaleString() + '</span></div>'
+          +'</div>'
+          +'<div class="bus-result-action">'
+          +'<button type="button" class="btn btn-primary btn-book-fare">Book this fare</button>'
+          +'</div></div>';
+      }
+
+      document.getElementById('planner-form').addEventListener('submit', async function(e){
         e.preventDefault();
         var from  = document.getElementById('plan-from').value;
         var to    = document.getElementById('plan-to').value;
         var date  = document.getElementById('plan-date').value;
+        var time  = document.getElementById('plan-time').value;
         var type  = document.getElementById('plan-type').value;
         var results = document.getElementById('plan-bus-results');
 
-        if(!from || !to || !date){
+        if(!from || !to || !date || !time){
           results.innerHTML = '<div class="card" style="text-align:center;padding:30px;color:var(--text-muted);">Please fill in all fields before searching.</div>';
           return;
         }
 
-        var matches = buses.filter(function(b){
-          return b.from === from && b.to === to && b.date === date && (type==='all' || b.type===type);
-        });
+        var query = supabaseClient
+          .from('fares')
+          .select('*')
+          .ilike('route', '%' + firstWord(from) + '%')
+          .ilike('route', '%' + firstWord(to) + '%')
+          .order('price', { ascending: true });
+        if (type !== 'all') query = query.eq('klass', type);
 
-        if(!matches.length){
+        var { data: matches, error } = await query;
+        if (error) {
+          console.warn('trip-planner.html: fare search failed.', error);
+          results.innerHTML = '<div class="card" style="text-align:center;padding:30px;color:var(--text-muted);">Something went wrong searching fares. Please try again.</div>';
+          return;
+        }
+
+        if(!matches || !matches.length){
           results.innerHTML = '<div class="card" style="text-align:center;padding:30px;color:var(--text-muted);"><strong>No buses available</strong><br>Try a different date or route.</div>';
           return;
         }
 
-        results.innerHTML = matches.map(function(b){
-          return '<div class="bus-result">'
-            +'<div class="bus-result-main">'
-            +'<div class="bus-result-route">'+b.from+' <span>→</span> '+b.to+'</div>'
-            +'<div class="bus-result-details"><span>'+b.dep+' – '+b.arr+'</span><span>'+b.type+'</span><span>'+b.fare+'</span></div>'
-            +'</div>'
-            +'<div class="bus-result-action">'
-            +'<span class="seats-left">'+b.seats+' seats left</span>'
-            +'<a href="tickets.html" class="btn btn-primary">Select</a>'
-            +'</div></div>';
-        }).join('');
+        results.innerHTML = matches.map(fareResultHtml).join('');
+        results.dataset.date = date;
+        results.dataset.time = time;
+        results.dataset.from = from;
+        results.dataset.to = to;
 
         /* scroll to results */
         results.scrollIntoView({ behavior:'smooth', block:'start' });
+      });
+
+      function generateSeat(){
+        var row = 1 + Math.floor(Math.random() * 15);
+        var letter = ['A','B','C','D'][Math.floor(Math.random() * 4)];
+        return row + letter;
+      }
+      function generateCode(){
+        return 'JAC-' + Math.floor(10000 + Math.random() * 90000);
+      }
+
+      document.getElementById('plan-bus-results').addEventListener('click', async function(e){
+        var btn = e.target.closest('.btn-book-fare');
+        if(!btn) return;
+        var card = btn.closest('.bus-result');
+        var results = document.getElementById('plan-bus-results');
+
+        if(!currentUserId){
+          alert('Please log in again to book a trip.');
+          return;
+        }
+
+        btn.disabled = true;
+        btn.textContent = 'Booking…';
+
+        var { error } = await supabaseClient.from('trips').insert({
+          user_id: currentUserId,
+          origin: results.dataset.from,
+          destination: results.dataset.to,
+          date: results.dataset.date,
+          time: results.dataset.time,
+          seat: generateSeat(),
+          klass: card.dataset.klass,
+          fare: Number(card.dataset.price),
+          status: 'upcoming',
+          code: generateCode(),
+        });
+
+        if(error){
+          console.error('trip-planner.html: booking failed.', error);
+          btn.disabled = false;
+          btn.textContent = 'Book this fare';
+          alert('Sorry, that booking didn\'t go through. Please try again.');
+          return;
+        }
+
+        results.innerHTML = '<div class="card" style="text-align:center;padding:30px;color:var(--text-muted);">'
+          + '<strong>Trip booked!</strong><br>Find it on your <a href="tickets.html">Tickets</a> page.</div>';
       });
 
       /* ---- Itinerary form toggle ---- */
@@ -413,6 +497,9 @@
 </svg></span>Profile</a>
 </nav>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="../js/config.js"></script>
+<script src="../js/supabase-client.js"></script>
 <script src="../js/data.js"></script>
 <script src="../js/auth.js"></script>
 <script src="../js/nav.js"></script>

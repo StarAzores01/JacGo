@@ -3,6 +3,13 @@
 <head>
 <meta charset="UTF-8" />
 <script>try{var t=localStorage.getItem('jac-theme');if(t==='dark'||t==='light')document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+<!-- Auth guard: hide this protected page until nav.js confirms a Supabase
+     session and removes .auth-pending (see css/base.css). no-store is a
+     best-effort nudge against browser bfcache on a static host that can't
+     set real HTTP headers; nav.js's pageshow listener is what actually
+     re-checks the session if a cached view gets restored anyway. -->
+<meta http-equiv="Cache-Control" content="no-store" />
+<script>document.documentElement.classList.add('auth-pending');</script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Accommodation — JAC Go</title>
 <link rel="icon" href="../favicon.svg" type="image/svg+xml" />
@@ -142,62 +149,70 @@
     </header>
 
     <main class="view">
-      <div class="grid grid-3">
-        <div class="photo-card">
-          <img class="thumb" src="/assets/images/Terezza.webp" alt="Terrazza Inn Lucena exterior" loading="lazy" />
-          <div class="body">
-            <h4>Terrazza Inn Lucena</h4>
-            <p>5 min from Grand Central Terminal</p>
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;">
-              <span class="fare-amount">₱1,800/night</span><span class="pill warn">★ 4.4</span>
-            </div>
-          </div>
-        </div>
-        <div class="photo-card">
-          <img class="thumb" src="/assets/images/bay.jpg" alt="Batangas Bay Hotel exterior near the port" loading="lazy" />
-          <div class="body">
-            <h4>Batangas Bay Hotel</h4>
-            <p>Near Batangas Port</p>
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;">
-              <span class="fare-amount">₱2,300/night</span><span class="pill warn">★ 4.2</span>
-            </div>
-          </div>
-        </div>
-        <div class="photo-card">
-          <img class="thumb" src="/assets/images/calambasuites.jpg" alt="Calamba Garden Suites exterior" loading="lazy" />
-          <div class="body">
-            <h4>Calamba Garden Suites</h4>
-            <p>10 min from terminal</p>
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;">
-              <span class="fare-amount">₱1,450/night</span><span class="pill warn">★ 4.0</span>
-            </div>
-          </div>
-        </div>
-        <div class="photo-card">
-          <img class="thumb" src="/assets/images/raylux.jpg" alt="RAYLux Hotel exterior, Lucena" loading="lazy" />
-          <div class="body">
-            <h4>RAYLux Hotel</h4>
-            <p>Lucena, Quezon</p>
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;">
-              <span style="font-size:12px;color:var(--text-muted);">Contact for current rates</span>
-            </div>
-          </div>
-        </div>
-        <div class="photo-card">
-          <img class="thumb" src="/assets/images/hotel88.jpg" alt="Hotel Oliva 88 exterior, Calamba" loading="lazy" />
-          <div class="body">
-            <h4>Hotel Oliva 88</h4>
-            <p>Calamba, Laguna</p>
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;">
-              <span style="font-size:12px;color:var(--text-muted);">Contact for current rates</span>
-            </div>
-          </div>
-        </div>
-      </div>
-      <p style="font-size:10.5px;color:var(--text-muted);margin:14px 0 0;">
-        RAYLux Hotel and Hotel Oliva 88 are listed via <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener" style="color:inherit;">OpenStreetMap contributors</a>, ODbL — verify details directly before booking.
+      <div class="grid grid-3" id="accommodation-grid"></div>
+      <p id="accommodation-empty" style="display:none;text-align:center;padding:24px 20px;color:var(--text-muted);font-size:13.5px;">
+        No accommodation listings yet.
+      </p>
+      <p id="accommodation-osm-credit" style="font-size:10.5px;color:var(--text-muted);margin:14px 0 0;display:none;">
+        Some listings via <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener" style="color:inherit;">OpenStreetMap contributors</a>, ODbL — verify details directly before booking.
       </p>
     </main>
+
+    <script>
+    (function () {
+      function escHtml(s) { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+
+      // Curated photos for the original hand-picked listings, matched by
+      // name. Anything without a match (e.g. future pipeline imports —
+      // see pipeline/README.md) falls back to a generic placeholder rather
+      // than a broken image.
+      var PHOTOS = {
+        "Terrazza Inn Lucena":    "/assets/images/Terezza.webp",
+        "Batangas Bay Hotel":     "/assets/images/bay.jpg",
+        "Calamba Garden Suites":  "/assets/images/calambasuites.jpg",
+        "RAYLux Hotel":           "/assets/images/raylux.jpg",
+        "Hotel Oliva 88":         "/assets/images/hotel88.jpg",
+      };
+      var PLACEHOLDER_PHOTO = "/assets/images/jaclinerlogo.jpg";
+
+      function cardHtml(a) {
+        var photo = PHOTOS[a.name] || PLACEHOLDER_PHOTO;
+        var priceHtml = a.price != null
+          ? '<span class="fare-amount">₱' + Number(a.price).toLocaleString() + '/night</span>'
+          : '<span style="font-size:12px;color:var(--text-muted);">Contact for current rates</span>';
+        var ratingHtml = a.rating != null ? '<span class="pill warn">★ ' + Number(a.rating).toFixed(1) + '</span>' : '';
+        return '<div class="photo-card">'
+          + '<img class="thumb" src="' + photo + '" alt="' + escHtml(a.name) + '" loading="lazy" />'
+          + '<div class="body">'
+          + '<h4>' + escHtml(a.name) + '</h4>'
+          + '<p>' + escHtml(a.location || "") + '</p>'
+          + '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;">' + priceHtml + ratingHtml + '</div>'
+          + '</div></div>';
+      }
+
+      async function loadAccommodation() {
+        var grid = document.getElementById("accommodation-grid");
+        var empty = document.getElementById("accommodation-empty");
+        var osmCredit = document.getElementById("accommodation-osm-credit");
+
+        var { data, error } = await supabaseClient
+          .from("accommodation")
+          .select("*")
+          .order("name", { ascending: true });
+        if (error) { console.warn("accommodation.html: couldn't load listings.", error); return; }
+
+        if (!data || !data.length) {
+          empty.style.display = "";
+          return;
+        }
+        empty.style.display = "none";
+        grid.innerHTML = data.map(cardHtml).join("");
+        osmCredit.style.display = data.some(function (a) { return a.source === "osm"; }) ? "" : "none";
+      }
+
+      loadAccommodation();
+    })();
+    </script>
   </div>
 </div>
 
@@ -226,6 +241,9 @@
 </svg></span>Profile</a>
 </nav>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="../js/config.js"></script>
+<script src="../js/supabase-client.js"></script>
 <script src="../js/data.js"></script>
 <script src="../js/auth.js"></script>
 <script src="../js/nav.js"></script>

@@ -53,7 +53,7 @@
     'dash.nearStop':        { en: 'Near your next stop',   fil: 'Malapit sa Susunod na Hinto' },
     'dash.autoSuggest':     { en: 'Auto-suggested based on your upcoming trip.', fil: 'Awtomatikong iminungkahi batay sa iyong paparating na biyahe.' },
     'dash.upcoming':        { en: 'Upcoming Trips',        fil: 'Mga Paparating na Biyahe' },
-    'dash.onTime':          { en: 'ON TIME',               fil: 'SA ORAS' },
+    'dash.confirmed':       { en: 'CONFIRMED',             fil: 'KUMPIRMADO' },
 
     /* Trip Planner */
     'plan.newTrip':         { en: 'New Trip',              fil: 'Bagong Biyahe' },
@@ -133,6 +133,8 @@
     'confirm.removePayment.msg':     { en: 'This payment method will be removed from your account.', fil: 'Ang paraan ng bayad na ito ay aalisin sa iyong account.' },
     'confirm.deleteNotif.title':     { en: 'Delete notification?',         fil: 'Burahin ang abiso?' },
     'confirm.deleteNotif.msg':       { en: 'This notification will be permanently removed.', fil: 'Ang abisong ito ay permanenteng matatanggal.' },
+    'confirm.logout.title':          { en: 'Log out?',                     fil: 'Mag-logout?' },
+    'confirm.logout.msg':            { en: "You'll need to log in again to access your account.", fil: 'Kakailanganin mong mag-login muli upang ma-access ang iyong account.' },
 
     /* Chatbot widget (placeholder — not wired to a real assistant yet) */
     'chat.title':            { en: 'JAC Assistant',         fil: 'JAC Assistant' },

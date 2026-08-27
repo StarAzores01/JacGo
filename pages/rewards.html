@@ -3,6 +3,13 @@
 <head>
 <meta charset="UTF-8" />
 <script>try{var t=localStorage.getItem('jac-theme');if(t==='dark'||t==='light')document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+<!-- Auth guard: hide this protected page until nav.js confirms a Supabase
+     session and removes .auth-pending (see css/base.css). no-store is a
+     best-effort nudge against browser bfcache on a static host that can't
+     set real HTTP headers; nav.js's pageshow listener is what actually
+     re-checks the session if a cached view gets restored anyway. -->
+<meta http-equiv="Cache-Control" content="no-store" />
+<script>document.documentElement.classList.add('auth-pending');</script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Rewards — JAC Go</title>
 <link rel="icon" href="../favicon.svg" type="image/svg+xml" />
@@ -145,45 +152,104 @@
       <div class="card" style="margin-bottom:18px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px;">
         <div>
           <span class="card-eyebrow">Alagang JAC Points</span>
-          <h3 style="font-family:var(--font-display);font-size:32px;">4,280 pts</h3>
+          <h3 style="font-family:var(--font-display);font-size:32px;" id="rewards-points">0 pts</h3>
         </div>
-        <span class="pill warn">Gold Tier</span>
+        <span class="pill warn" id="rewards-tier">Bronze Tier</span>
       </div>
-      <div class="grid grid-2">
-        <div class="card">
-          <h3>Free Seat Upgrade</h3>
-          <p style="font-size:12.5px;color:var(--text-muted);margin:6px 0 14px;">Ordinary → Deluxe on any route</p>
-          <div style="display:flex;justify-content:space-between;align-items:center;">
-            <span class="fare-amount">1,200 pts</span>
-            <button class="btn btn-primary" data-redeem>Redeem</button>
-          </div>
-        </div>
-        <div class="card">
-          <h3>₱150 Fare Voucher</h3>
-          <p style="font-size:12.5px;color:var(--text-muted);margin:6px 0 14px;">Valid on any Southern Luzon route</p>
-          <div style="display:flex;justify-content:space-between;align-items:center;">
-            <span class="fare-amount">900 pts</span>
-            <button class="btn btn-primary" data-redeem>Redeem</button>
-          </div>
-        </div>
-        <div class="card">
-          <h3>Priority Boarding Pass</h3>
-          <p style="font-size:12.5px;color:var(--text-muted);margin:6px 0 14px;">Skip the queue for 1 trip</p>
-          <div style="display:flex;justify-content:space-between;align-items:center;">
-            <span class="fare-amount">600 pts</span>
-            <button class="btn btn-primary" data-redeem>Redeem</button>
-          </div>
-        </div>
-        <div class="card">
-          <h3>Free Padala Pickup</h3>
-          <p style="font-size:12.5px;color:var(--text-muted);margin:6px 0 14px;">One free cargo pickup, up to 5kg</p>
-          <div style="display:flex;justify-content:space-between;align-items:center;">
-            <span class="fare-amount">400 pts</span>
-            <button class="btn btn-primary" data-redeem>Redeem</button>
-          </div>
-        </div>
-      </div>
+      <div class="grid grid-2" id="rewards-grid"></div>
+      <p id="rewards-empty" style="display:none;text-align:center;padding:24px 20px;color:var(--text-muted);font-size:13.5px;">
+        No rewards available right now.
+      </p>
     </main>
+
+    <script>
+    (function () {
+      function escHtml(s) { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+
+      var currentPoints = 0;
+      var rewardsCache = []; // catalog is small and static during the page's lifetime — fetched once
+
+      // Rewards are a repeatable exchange (spend points, any time you can
+      // afford it again), not a one-time-per-user claim — there's no
+      // "already redeemed" record in the schema, so a card's only state is
+      // whether the current balance can afford it right now.
+      function cardHtml(r) {
+        var afford = currentPoints >= r.cost;
+        return '<div class="card">'
+          + '<h3>' + escHtml(r.title) + '</h3>'
+          + '<p style="font-size:12.5px;color:var(--text-muted);margin:6px 0 14px;">' + escHtml(r.description || "") + '</p>'
+          + '<div style="display:flex;justify-content:space-between;align-items:center;">'
+          + '<span class="fare-amount">' + Number(r.cost).toLocaleString() + ' pts</span>'
+          + '<button class="btn btn-primary" data-reward-id="' + r.id + '"' + (afford ? '' : ' disabled') + '>Redeem</button>'
+          + '</div></div>';
+      }
+
+      function renderGrid() {
+        var grid = document.getElementById("rewards-grid");
+        var empty = document.getElementById("rewards-empty");
+        if (!rewardsCache.length) { empty.style.display = ""; return; }
+        empty.style.display = "none";
+        grid.innerHTML = rewardsCache.map(cardHtml).join("");
+      }
+
+      function updatePointsDisplay(points, tier) {
+        currentPoints = points;
+        var ptsEl = document.getElementById("rewards-points");
+        var tierEl = document.getElementById("rewards-tier");
+        if (ptsEl) ptsEl.textContent = currentPoints.toLocaleString() + " pts";
+        if (tierEl && tier) tierEl.textContent = tier + " Tier";
+      }
+
+      async function loadPointsHeader() {
+        if (typeof getCurrentUser !== "function") return;
+        var user = await getCurrentUser();
+        if (!user) return;
+        updatePointsDisplay(user.points || 0, user.tier || "Bronze");
+        renderGrid(); // re-render now that we know what's affordable
+      }
+
+      async function loadRewards() {
+        var { data, error } = await supabaseClient
+          .from("rewards")
+          .select("*")
+          .order("cost", { ascending: true });
+        if (error) { console.warn("rewards.html: couldn't load rewards.", error); return; }
+        rewardsCache = data || [];
+        renderGrid();
+      }
+
+      document.getElementById("rewards-grid").addEventListener("click", async function (e) {
+        var btn = e.target.closest("button[data-reward-id]");
+        if (!btn || btn.disabled) return;
+        var rewardId = btn.dataset.rewardId;
+
+        btn.disabled = true;
+        btn.textContent = "Redeeming…";
+
+        // Atomic server-side deduction (see supabase/migrations/0002_redeem_reward.sql)
+        // instead of a client read-then-write, so a double click or a second
+        // tab can't redeem twice against the same stale points balance.
+        var { data, error } = await supabaseClient.rpc("redeem_reward", { reward_id: rewardId });
+
+        if (error) {
+          console.warn("rewards.html: redeem failed.", error);
+          alert(error.message && /not enough points/i.test(error.message)
+            ? "You don't have enough points for this reward."
+            : "Sorry, that redemption didn't go through. Please try again.");
+          renderGrid(); // restore the button's normal label/disabled state
+          return;
+        }
+
+        updatePointsDisplay(data.points, data.tier);
+        // Other cards may now be unaffordable (or affordable again) —
+        // re-render every card against the fresh balance.
+        renderGrid();
+      });
+
+      loadPointsHeader();
+      loadRewards();
+    })();
+    </script>
   </div>
 </div>
 
@@ -212,6 +278,9 @@
 </svg></span>Profile</a>
 </nav>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="../js/config.js"></script>
+<script src="../js/supabase-client.js"></script>
 <script src="../js/data.js"></script>
 <script src="../js/auth.js"></script>
 <script src="../js/nav.js"></script>

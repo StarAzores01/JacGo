@@ -3,6 +3,13 @@
 <head>
 <meta charset="UTF-8" />
 <script>try{var t=localStorage.getItem('jac-theme');if(t==='dark'||t==='light')document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+<!-- Auth guard: hide this protected page until nav.js confirms a Supabase
+     session and removes .auth-pending (see css/base.css). no-store is a
+     best-effort nudge against browser bfcache on a static host that can't
+     set real HTTP headers; nav.js's pageshow listener is what actually
+     re-checks the session if a cached view gets restored anyway. -->
+<meta http-equiv="Cache-Control" content="no-store" />
+<script>document.documentElement.classList.add('auth-pending');</script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Dashboard — JAC Go</title>
 <link rel="icon" href="../favicon.svg" type="image/svg+xml" />
@@ -142,7 +149,7 @@
     </header>
 
     <main class="view">
-      <div class="flap-board" id="flap-board">
+      <div class="flap-board" id="flap-board" style="display:none;">
         <div class="flap-group">
           <span class="flap-label">Route</span>
           <div class="flap-row">
@@ -166,7 +173,10 @@
             <div class="flap wide" data-flap="seat">12A</div>
           </div>
         </div>
-        <div class="flap-status" data-i18n="dash.onTime">ON TIME</div>
+        <div class="flap-status" data-i18n="dash.confirmed">CONFIRMED</div>
+      </div>
+      <div class="card" id="flap-board-empty" style="display:none;text-align:center;padding:24px 20px;color:var(--text-muted);font-size:13.5px;">
+        No upcoming trips yet — <a href="trip-planner.html">plan one</a>.
       </div>
 
       <div class="grid grid-quick">
@@ -208,20 +218,10 @@
 
       <div class="card mt-section">
         <span class="card-eyebrow" data-i18n="dash.upcoming">Upcoming Trips</span>
-        <div class="list-row">
-          <div style="flex:1;">
-            <strong style="font-size:13.5px;">Pasay (Buendia) → Lucena Grand Central</strong>
-            <div style="font-size:12px;color:var(--text-muted);">Aug 17, 2026 · 06:45 AM · Seat 12A</div>
-          </div>
-          <span class="pill ok">Deluxe</span>
-        </div>
-        <div class="list-row">
-          <div style="flex:1;">
-            <strong style="font-size:13.5px;">Cubao → Calamba City</strong>
-            <div style="font-size:12px;color:var(--text-muted);">Aug 22, 2026 · 01:15 PM · Seat 07C</div>
-          </div>
-          <span class="pill ok">Ordinary</span>
-        </div>
+        <div id="dash-upcoming-trips"></div>
+        <p id="dash-upcoming-trips-empty" style="font-size:12.5px;color:var(--text-muted);margin:4px 0 0;display:none;">
+          No upcoming trips yet — <a href="trip-planner.html">plan one</a>.
+        </p>
       </div>
     </main>
   </div>
@@ -252,6 +252,9 @@
 </svg></span>Profile</a>
 </nav>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="../js/config.js"></script>
+<script src="../js/supabase-client.js"></script>
 <script src="../js/data.js"></script>
 <script src="../js/auth.js"></script>
 <script src="../js/nav.js"></script>

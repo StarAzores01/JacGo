@@ -1,26 +1,71 @@
 /* interactions.js — per-page UI behavior, safe to include on every page */
 
 (function () {
-  /* Animate the split-flap departure board on dashboard */
-  function initFlapBoard() {
-    const board = document.getElementById("flap-board");
-    if (!board || typeof DB === "undefined") return;
-    const t = DB.nextTrip;
+  function escHtml(s) { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
 
+  /* "2026-08-17" -> "AUG 17" (flap board's compact per-character format) */
+  function formatFlapDate(dateStr) {
+    const d = new Date(dateStr + "T00:00:00");
+    return `${d.toLocaleDateString("en-US", { month: "short" }).toUpperCase()} ${String(d.getDate()).padStart(2, "0")}`;
+  }
+
+  /* "2026-08-17" -> "Aug 17, 2026" */
+  function formatTripDateLong(dateStr) {
+    const d = new Date(dateStr + "T00:00:00");
+    return d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  }
+
+  /* "06:45:00" (Postgres time) -> "06:45 AM" */
+  function formatTripTime(timeStr) {
+    if (!timeStr) return "";
+    const [h, m] = timeStr.split(":").map(Number);
+    const period = h >= 12 ? "PM" : "AM";
+    const h12 = ((h + 11) % 12) + 1;
+    return `${String(h12).padStart(2, "0")}:${String(m).padStart(2, "0")} ${period}`;
+  }
+
+  /* The soonest not-yet-departed trip for a user, or null. */
+  async function fetchNextUpcomingTrip(userId) {
+    const { data, error } = await supabaseClient
+      .from("trips")
+      .select("*")
+      .eq("user_id", userId)
+      .eq("status", "upcoming")
+      .order("date", { ascending: true })
+      .order("time", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+    if (error) console.warn("interactions.js: couldn't load next trip.", error);
+    return data;
+  }
+
+  /* Animate the split-flap departure board on dashboard with the user's
+     soonest upcoming trip (formerly DB.nextTrip's mock/fictional status —
+     there's no live delay-tracking data source, so this just shows the
+     booking's real fields and a plain "confirmed" state). */
+  async function initFlapBoard() {
+    const board = document.getElementById("flap-board");
+    const empty = document.getElementById("flap-board-empty");
+    if (!board || typeof getCurrentUser !== "function") return;
+
+    const user = await getCurrentUser();
+    if (!user) return;
+    const t = await fetchNextUpcomingTrip(user.id);
+    if (!t) {
+      if (empty) empty.style.display = "";
+      return;
+    }
+
+    board.style.display = "";
     const setText = (sel, val) => { const el = board.querySelector(sel); if (el) el.textContent = val; };
-    setText("[data-flap='origin']", t.origin);
-    setText("[data-flap='destination']", t.destination);
-    setText("[data-flap='gate']", t.gate);
+    setText("[data-flap='origin']", t.origin.toUpperCase());
+    setText("[data-flap='destination']", t.destination.toUpperCase());
+    setText("[data-flap='gate']", t.gate || "TBA");
     setText("[data-flap='seat']", t.seat);
 
-    fillDigits(board.querySelector("[data-flap-row='date']"), t.date);
-    fillDigits(board.querySelector("[data-flap-row='time']"), t.time);
+    fillDigits(board.querySelector("[data-flap-row='date']"), formatFlapDate(t.date));
+    fillDigits(board.querySelector("[data-flap-row='time']"), t.time.slice(0, 5));
 
-    const status = board.querySelector(".flap-status");
-    if (status) {
-      status.textContent = t.status;
-      status.classList.toggle("delay", t.status === "DELAYED");
-    }
     board.querySelectorAll(".flap").forEach((el, i) => {
       el.classList.add("animate");
       el.style.animationDelay = (i * 40) + "ms";
@@ -32,18 +77,62 @@
     row.innerHTML = str.split("").map(c => `<div class="flap">${c}</div>`).join("");
   }
 
-  /* Fill dashboard points, weather, and tier widgets */
-  function fillDashboardWidgets() {
-    if (typeof DB === "undefined") return;
+  /* Fill dashboard points/tier (from the user's profiles row) and weather
+     (still DB.weather — there's no live weather API wired up; see
+     js/data.js's header comment for what's still mock and why). */
+  async function fillDashboardWidgets() {
     const pts = document.getElementById("points-balance");
-    if (pts) pts.textContent = DB.user.points.toLocaleString() + " pts";
     const tier = document.getElementById("points-tier-note");
-    if (tier) tier.textContent = `${DB.user.tier} tier — 720 pts to Platinum`;
+    if ((pts || tier) && typeof getCurrentUser === "function") {
+      const user = await getCurrentUser();
+      if (user && typeof user.points === "number") {
+        if (pts) pts.textContent = user.points.toLocaleString() + " pts";
+        // No real tier-threshold data to compute "X pts to next tier" from
+        // (that was a hardcoded mock number) — just show the tier itself.
+        if (tier) tier.textContent = `${user.tier} tier`;
+      }
+    }
 
+    if (typeof DB === "undefined") return;
     const temp = document.getElementById("dest-temp");
     const desc = document.getElementById("dest-weather-desc");
     if (temp) temp.textContent = DB.weather.destination.temp + "°";
     if (desc) desc.textContent = `${DB.weather.destination.place} — ${DB.weather.destination.desc}`;
+  }
+
+  /* Dashboard's "Upcoming Trips" list (top 3), from the trips table. */
+  async function fillUpcomingTripsWidget() {
+    const container = document.getElementById("dash-upcoming-trips");
+    const emptyEl = document.getElementById("dash-upcoming-trips-empty");
+    if (!container || typeof getCurrentUser !== "function") return;
+
+    const user = await getCurrentUser();
+    if (!user) return;
+
+    const { data: trips, error } = await supabaseClient
+      .from("trips")
+      .select("*")
+      .eq("user_id", user.id)
+      .eq("status", "upcoming")
+      .order("date", { ascending: true })
+      .order("time", { ascending: true })
+      .limit(3);
+    if (error) { console.warn("interactions.js: couldn't load upcoming trips.", error); return; }
+
+    if (!trips || !trips.length) {
+      if (emptyEl) emptyEl.style.display = "";
+      return;
+    }
+    if (emptyEl) emptyEl.style.display = "none";
+    container.innerHTML = trips.map(t => `
+      <div class="list-row">
+        <div style="flex:1;">
+          <strong style="font-size:13.5px;">${escHtml(t.origin)} → ${escHtml(t.destination)}</strong>
+          <div style="font-size:12px;color:var(--text-muted);">${formatTripDateLong(t.date)} · ${formatTripTime(t.time)} · Seat ${escHtml(t.seat)}</div>
+        </div>
+        <span class="pill ok">${escHtml(t.klass)}</span>
+      </div>
+    `).join("");
   }
 
   /* Fill dashboard activities & dining list */
@@ -83,9 +172,9 @@
   }
 
   /* Pre-fill profile form with logged-in user data */
-  function fillProfileForm() {
+  async function fillProfileForm() {
     if (typeof getCurrentUser !== "function") return;
-    const user = getCurrentUser();
+    const user = await getCurrentUser();
     if (!user) return;
     const nameInput = document.getElementById("profile-name");
     const emailInput = document.getElementById("profile-email");
@@ -93,42 +182,22 @@
     if (emailInput) emailInput.value = user.email;
   }
 
-  /* Rewards redeem button state */
-  function wireRedeemButtons() {
-    document.querySelectorAll("[data-redeem]").forEach(btn => {
-      btn.addEventListener("click", () => {
-        btn.textContent = "Redeemed ✓";
-        btn.disabled = true;
-        btn.classList.remove("btn-primary");
-        btn.classList.add("btn-outline");
-      });
-    });
-  }
-
-  /* Padala fee estimate */
-  function wirePadalaForm() {
-    const form = document.getElementById("padala-form");
-    if (!form) return;
-    form.addEventListener("submit", e => {
-      e.preventDefault();
-      const weight = parseFloat(form.querySelector("[name=weight]").value) || 1;
-      const out = document.getElementById("padala-quote");
-      if (out) out.textContent = `Estimated fee: ₱${Math.max(60, Math.round(weight * 35))}`;
-    });
-  }
-
   /* Login form validation and redirect */
   function wireLoginForm() {
     const form = document.getElementById("login-form");
     if (!form) return;
     const errorEl = document.getElementById("login-error");
+    const submitBtn = form.querySelector('button[type="submit"]');
 
-    form.addEventListener("submit", e => {
+    form.addEventListener("submit", async e => {
       e.preventDefault();
       const email = form.querySelector("[name=email]").value.trim();
       const password = form.querySelector("[name=password]").value;
 
-      const result = login(email, password);
+      if (submitBtn) submitBtn.disabled = true;
+      const result = await login(email, password);
+      if (submitBtn) submitBtn.disabled = false;
+
       if (!result.ok) {
         if (errorEl) { errorEl.textContent = result.error; errorEl.style.display = "block"; }
         return;
@@ -168,6 +237,7 @@
     const form = document.getElementById("signup-form");
     if (!form) return;
     const errorEl = document.getElementById("signup-error");
+    const submitBtn = form.querySelector('button[type="submit"]');
 
     function setFieldError(name, message) {
       const field = form.querySelector(`[name="${name}"]`).closest(".field");
@@ -179,7 +249,7 @@
       }
     }
 
-    form.addEventListener("submit", e => {
+    form.addEventListener("submit", async e => {
       e.preventDefault();
       if (errorEl) errorEl.style.display = "none";
 
@@ -207,9 +277,20 @@
 
       if (!valid) return;
 
-      const result = signup(name, email, password);
+      if (submitBtn) submitBtn.disabled = true;
+      const result = await signup(name, email, password);
+      if (submitBtn) submitBtn.disabled = false;
+
       if (!result.ok) {
         if (errorEl) { errorEl.textContent = result.error; errorEl.style.display = "block"; }
+        return;
+      }
+      if (result.needsEmailConfirmation) {
+        // "Confirm email" is on for this project — there's no session yet.
+        if (errorEl) {
+          errorEl.textContent = "Almost there — check your email to confirm your account, then log in.";
+          errorEl.style.display = "block";
+        }
         return;
       }
       window.location.href = "dashboard.html";
@@ -302,11 +383,10 @@
   document.addEventListener("DOMContentLoaded", () => {
     initFlapBoard();
     fillDashboardWidgets();
+    fillUpcomingTripsWidget();
     fillActivitiesWidget();
     fillPackingList();
     fillProfileForm();
-    wireRedeemButtons();
-    wirePadalaForm();
     wireLoginForm();
     wireForgotPassword();
     wirePasswordToggles();

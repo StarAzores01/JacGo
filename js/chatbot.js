@@ -177,11 +177,12 @@
     });
   }
 
-  document.addEventListener("DOMContentLoaded", () => {
+  document.addEventListener("DOMContentLoaded", async () => {
     // Mirror nav.js's guard: don't inject the widget on a page that's about
     // to redirect to login. (requireAuth only exists on app-shell pages
     // that load auth.js — it's undefined, and skipped, on index.html.)
-    if (typeof requireAuth === "function" && requireAuth()) return;
+    // requireAuth() is async now, same as nav.js's own call to it.
+    if (typeof requireAuth === "function" && await requireAuth()) return;
 
     // Every page gets the widget except the auth pages themselves — it
     // has no login-gated content, so it's fine logged out on index.html too.

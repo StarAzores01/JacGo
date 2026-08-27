@@ -7,6 +7,11 @@ node_modules/
 .env.*
 *.env
 
+# Supabase project URL + anon key — real values, gitignored.
+# js/config.example.js is the committed template; copy it to js/config.js
+# and fill in your own project's values (Supabase dashboard -> Settings -> API).
+js/config.js
+
 # OS cruft
 .DS_Store
 Thumbs.db
@@ -22,3 +27,5 @@ desktop.ini
 # Chrome-debugger config (no machine-specific paths), useful to share.
 # Uncomment below if you'd rather keep editor config local-only:
 # .vscode/
+
+node_modules/

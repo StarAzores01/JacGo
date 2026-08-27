@@ -3,6 +3,13 @@
 <head>
 <meta charset="UTF-8" />
 <script>try{var t=localStorage.getItem('jac-theme');if(t==='dark'||t==='light')document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+<!-- Auth guard: hide this protected page until nav.js confirms a Supabase
+     session and removes .auth-pending (see css/base.css). no-store is a
+     best-effort nudge against browser bfcache on a static host that can't
+     set real HTTP headers; nav.js's pageshow listener is what actually
+     re-checks the session if a cached view gets restored anyway. -->
+<meta http-equiv="Cache-Control" content="no-store" />
+<script>document.documentElement.classList.add('auth-pending');</script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Notifications — JAC Go</title>
 <link rel="icon" href="../favicon.svg" type="image/svg+xml" />
@@ -148,42 +155,7 @@
         <button class="btn btn-outline" id="btn-clear-all" style="padding:7px 14px;font-size:12.5px;" data-i18n="notif.clearAll">Clear all</button>
       </div>
 
-      <div id="notif-list">
-
-        <div class="toast-note alert" data-notif-id="1">
-          <span class="dot-ic"></span>
-          <div class="toast-note-body">
-            <div style="font-size:13.5px;">Your 06:45 AM trip to Lucena is on time. Gate opens 30 min before departure.</div>
-            <small>Just now</small>
-          </div>
-          <button class="notif-delete" aria-label="Delete notification" title="Delete">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-          </button>
-        </div>
-
-        <div class="toast-note" data-notif-id="2">
-          <span class="dot-ic"></span>
-          <div class="toast-note-body">
-            <div style="font-size:13.5px;">Rainy season advisory: light delays possible on Batangas routes this week.</div>
-            <small>2h ago</small>
-          </div>
-          <button class="notif-delete" aria-label="Delete notification" title="Delete">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-          </button>
-        </div>
-
-        <div class="toast-note" data-notif-id="3">
-          <span class="dot-ic"></span>
-          <div class="toast-note-body">
-            <div style="font-size:13.5px;">Earn 2x points on Deluxe bookings this weekend.</div>
-            <small>1d ago</small>
-          </div>
-          <button class="notif-delete" aria-label="Delete notification" title="Delete">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-          </button>
-        </div>
-
-      </div>
+      <div id="notif-list"></div>
 
       <div id="notif-empty" class="notif-empty" style="display:none;">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:36px;height:36px;margin:0 auto 10px;display:block;color:var(--text-muted);"><path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/></svg>
@@ -218,6 +190,34 @@
 
     <script>
     (function(){
+      function escHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+      /* ISO timestamp -> "Just now" / "2h ago" / "1d ago" / a plain date
+         once it's more than a week old. */
+      function relativeTime(iso){
+        var diffMs = Date.now() - new Date(iso).getTime();
+        var mins = Math.floor(diffMs / 60000);
+        if(mins < 1) return 'Just now';
+        if(mins < 60) return mins + 'm ago';
+        var hours = Math.floor(mins / 60);
+        if(hours < 24) return hours + 'h ago';
+        var days = Math.floor(hours / 24);
+        if(days < 7) return days + 'd ago';
+        return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      }
+
+      function notifHtml(n){
+        return '<div class="toast-note' + (n.type === 'alert' ? ' alert' : '') + '" data-notif-id="' + n.id + '">'
+          + '<span class="dot-ic"></span>'
+          + '<div class="toast-note-body">'
+          + '<div style="font-size:13.5px;">' + escHtml(n.body) + '</div>'
+          + '<small>' + relativeTime(n.created_at) + '</small>'
+          + '</div>'
+          + '<button class="notif-delete" aria-label="Delete notification" title="Delete">'
+          + '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>'
+          + '</button></div>';
+      }
+
       function updateCount(){
         var items = document.querySelectorAll('#notif-list .toast-note');
         var count = items.length;
@@ -229,7 +229,26 @@
         if(toolbar)  toolbar.style.display = count === 0 ? 'none' : '';
       }
 
-      function removeNotif(el){
+      var currentUserId = null;
+
+      async function loadNotifications(){
+        if (typeof getCurrentUser !== 'function') return;
+        var user = await getCurrentUser();
+        if (!user) return;
+        currentUserId = user.id;
+
+        var { data, error } = await supabaseClient
+          .from('notifications')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false });
+        if (error) { console.warn('notifications.html: couldn\'t load notifications.', error); return; }
+
+        document.getElementById('notif-list').innerHTML = (data || []).map(notifHtml).join('');
+        updateCount();
+      }
+
+      function removeNotifEl(el){
         el.classList.add('removing');
         setTimeout(function(){ el.remove(); updateCount(); }, 220);
       }
@@ -246,10 +265,24 @@
         pendingNotif = null;
         document.getElementById('confirm-del-notif').classList.remove('open');
       });
-      document.getElementById('del-notif-yes').addEventListener('click', function(){
-        if(pendingNotif) removeNotif(pendingNotif);
+      document.getElementById('del-notif-yes').addEventListener('click', async function(){
+        var el = pendingNotif;
         pendingNotif = null;
         document.getElementById('confirm-del-notif').classList.remove('open');
+        if (!el || !currentUserId) return;
+
+        var notifId = el.dataset.notifId;
+        var { error } = await supabaseClient
+          .from('notifications')
+          .delete()
+          .eq('id', notifId)
+          .eq('user_id', currentUserId);
+        if (error) {
+          console.error('notifications.html: delete failed.', error);
+          alert('Sorry, that notification could not be deleted. Please try again.');
+          return;
+        }
+        removeNotifEl(el);
       });
 
       /* --- Clear all --- */
@@ -259,7 +292,20 @@
       document.getElementById('clear-notif-no').addEventListener('click', function(){
         document.getElementById('confirm-clear-notif').classList.remove('open');
       });
-      document.getElementById('clear-notif-yes').addEventListener('click', function(){
+      document.getElementById('clear-notif-yes').addEventListener('click', async function(){
+        document.getElementById('confirm-clear-notif').classList.remove('open');
+        if (!currentUserId) return;
+
+        var { error } = await supabaseClient
+          .from('notifications')
+          .delete()
+          .eq('user_id', currentUserId);
+        if (error) {
+          console.error('notifications.html: clear all failed.', error);
+          alert('Sorry, notifications could not be cleared. Please try again.');
+          return;
+        }
+
         document.querySelectorAll('#notif-list .toast-note').forEach(function(el){
           el.classList.add('removing');
         });
@@ -267,7 +313,6 @@
           document.getElementById('notif-list').innerHTML = '';
           updateCount();
         }, 250);
-        document.getElementById('confirm-clear-notif').classList.remove('open');
       });
 
       /* backdrop click to close confirms */
@@ -277,7 +322,7 @@
         });
       });
 
-      updateCount();
+      loadNotifications();
     })();
     </script>
   </div>
@@ -308,6 +353,9 @@
 </svg></span>Profile</a>
 </nav>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="../js/config.js"></script>
+<script src="../js/supabase-client.js"></script>
 <script src="../js/data.js"></script>
 <script src="../js/auth.js"></script>
 <script src="../js/nav.js"></script>

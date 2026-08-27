@@ -3,6 +3,13 @@
 <head>
 <meta charset="UTF-8" />
 <script>try{var t=localStorage.getItem('jac-theme');if(t==='dark'||t==='light')document.documentElement.setAttribute('data-theme',t);}catch(e){}</script>
+<!-- Auth guard (mirror image of the protected pages'): hide this page
+     until js/auth-redirect.js confirms there's no existing session and
+     removes .auth-pending (see css/base.css) — an already-logged-in
+     visitor gets bounced straight to dashboard.html without ever seeing
+     the login form flash on screen. -->
+<meta http-equiv="Cache-Control" content="no-store" />
+<script>document.documentElement.classList.add('auth-pending');</script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Log in — JAC Go</title>
 <link rel="icon" href="../favicon.svg" type="image/svg+xml" />
@@ -21,8 +28,7 @@
     </a>
 
     <h1 style="font-size:20px;text-align:center;margin-bottom:4px;">Welcome back</h1>
-    <p style="text-align:center;color:var(--text-muted);font-size:13px;margin:0 0 6px;">Log in to continue to your dashboard.</p>
-    <p style="text-align:center;color:var(--text-muted);font-size:11.5px;margin:0 0 20px;font-family:var(--font-mono);">Demo login: mika@jacliner.demo / demo1234</p>
+    <p style="text-align:center;color:var(--text-muted);font-size:13px;margin:0 0 20px;">Log in to continue to your dashboard.</p>
 
     <form id="login-form">
       <div class="field">
@@ -58,8 +64,12 @@
   </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="../js/config.js"></script>
+<script src="../js/supabase-client.js"></script>
 <script src="../js/data.js"></script>
 <script src="../js/auth.js"></script>
+<script src="../js/auth-redirect.js"></script>
 <script src="../js/interactions.js"></script>
 <script src="../js/theme.js"></script>
 </body>

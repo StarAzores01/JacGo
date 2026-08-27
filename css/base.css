@@ -186,6 +186,14 @@ img{ max-width:100%; display:block; }
 .modal-close:hover{ background:var(--bg); }
 .modal-footer{ display:flex; gap:10px; margin-top:20px; justify-content:flex-end; }
 
+/* Auth guard: set on protected pages by an inline bootstrap script in
+   <head> (before first paint) and removed by nav.js once the Supabase
+   session check resolves — hides the real page instead of flashing it to
+   a logged-out visitor before the redirect to login.html fires. Also
+   re-applied briefly by nav.js's bfcache `pageshow` guard when the
+   browser restores a cached view of the page (e.g. Back after logout). */
+html.auth-pending{ visibility:hidden; }
+
 /* Confirmation dialog */
 .confirm-overlay{
   display:none; position:fixed; inset:0; background:rgba(0,0,0,.55);

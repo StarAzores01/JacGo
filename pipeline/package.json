@@ -7,9 +7,13 @@
   "main": "run.js",
   "scripts": {
     "start": "node run.js",
-    "run": "node run.js"
+    "run": "node run.js",
+    "load-to-supabase": "node load-to-supabase.js"
   },
   "engines": {
     "node": ">=18"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2"
   }
 }

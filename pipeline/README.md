@@ -6,10 +6,11 @@ Marinduque), normalizes them onto two shared schemas, dedupes overlap
 between sources, and exports static JSON.
 
 **This is not part of the shipped website.** `jacgo-site` itself stays a
-100% static site with no server or database — this pipeline runs on your
-machine, and its output (`pipeline/output/*.json`) is what you wire into
-`js/data.js` (or a new data file) as an update to the site's mock data. See
-"Getting the output into the site" below.
+100% static site with no server of its own — its data now lives in
+Supabase (see `supabase/migrations/`), and this pipeline's output
+(`pipeline/output/*.json`) is what `load-to-supabase.js` loads into the
+`accommodation`/`pois` tables there. See "Getting the output into the
+site" below.
 
 ## Running it
 
@@ -18,7 +19,12 @@ cd pipeline
 node run.js
 ```
 
-No `npm install` needed — it only uses Node's built-in `fetch` (Node 18+).
+No `npm install` needed to generate output — `run.js` only uses Node's
+built-in `fetch` (Node 18+). `load-to-supabase.js` (loading that output
+into Supabase) is the one exception — it depends on
+`@supabase/supabase-js`, so `npm install` is needed before running *that*
+script specifically; see "Getting the output into the site" below.
+
 A full run across all four provinces takes several minutes, mostly spent in
 the deliberately-rate-limited Wikidata enrichment pass (one request pair —
 SPARQL lookup + Wikipedia summary — per POI, with a delay between each).
@@ -79,15 +85,26 @@ you're approved, not as an invitation to scrape instead.
 ## Getting the output into the site
 
 This pipeline deliberately stops at writing JSON — it doesn't touch
-`jacgo-site`'s HTML/CSS/JS. To actually use the data:
+Supabase or `jacgo-site`'s HTML/CSS/JS itself. To actually use the data:
 
 1. Review `pipeline/output/pois.json` / `accommodations.json` — this is
    real, un-curated OSM data; expect to spot-check before shipping it
    (a handful of odd tag combinations or unhelpful names are normal).
-2. Decide how it's loaded: either paste a trimmed/curated subset into
-   `js/data.js`'s existing `DB.accommodation` array (matching that
-   object's current shape), or add a new `js/poi-data.js` loaded
-   alongside it and `fetch()`'d at runtime — either keeps the site static.
+2. Load it into Supabase:
+   ```bash
+   cd pipeline
+   npm install   # first time only — pulls in @supabase/supabase-js
+   SUPABASE_URL=https://YOUR-PROJECT-REF.supabase.co \
+   SUPABASE_SERVICE_ROLE_KEY=your-service-role-key \
+   node load-to-supabase.js
+   ```
+   This upserts into the `accommodation`/`pois` tables (schema:
+   `supabase/migrations/0001_init.sql`), keyed on each record's pipeline
+   `id` — safe to re-run after a fresh `run.js` pass, it updates existing
+   rows instead of duplicating them. See the comment at the top of
+   `load-to-supabase.js` for the full explanation and where to find both
+   env var values (Supabase dashboard -> Project Settings -> API — the
+   service_role key, not the anon key this script never uses).
 3. Add the OSM/Wikipedia attribution credit somewhere visible in the UI
    (a footer line is enough) — this isn't optional per the licenses above.
 4. For Marinduque and rural Quezon specifically: OSM coverage is real but
