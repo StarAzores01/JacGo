@@ -1,3 +1,4 @@
+
 # Dependencies (pipeline/ is currently zero-dependency — Node's built-in
 # fetch — but this covers it if that ever changes)
 node_modules/
@@ -10,7 +11,7 @@ node_modules/
 # Supabase project URL + anon key — real values, gitignored.
 # js/config.example.js is the committed template; copy it to js/config.js
 # and fill in your own project's values (Supabase dashboard -> Settings -> API).
-js/config.js
+
 
 # OS cruft
 .DS_Store
