@@ -20,6 +20,7 @@
     "chat.thinking": "Thinking…",
     "chat.error": "The assistant is temporarily unavailable. Please try again later.",
     "chat.loginRequired": "Please log in to chat with JAC Assistant.",
+    "chat.rateLimited": "You've sent several requests recently. Please try again later.",
     "chat.inputPlaceholder": "Type a message…",
     "chat.send": "Send message",
     "chat.openLabel": "Open JAC Assistant chat",
@@ -208,6 +209,7 @@
         reply = await askAssistant(text, history.slice(-MAX_HISTORY));
       } catch (err) {
         console.warn("chatbot.js: assistant request failed.", err);
+        if (err && err.context && err.context.status === 429) failKey = "chat.rateLimited";
       } finally {
         // Always restore the UI, whatever happened above.
         pending.classList.remove("pending");

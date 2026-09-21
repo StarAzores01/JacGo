@@ -1,0 +1,19 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "serve-jacgo",
+            "type": "shell",
+            "command": "npx --yes http-server . -p 8080 -c-1",
+            "isBackground": true,
+            "problemMatcher": {
+                "pattern": { "regexp": "^$" },
+                "background": {
+                    "activeOnStart": true,
+                    "beginsPattern": "Starting up http-server",
+                    "endsPattern": "Hit CTRL-C to stop the server"
+                }
+            }
+        }
+    ]
+}

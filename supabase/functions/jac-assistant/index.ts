@@ -10,6 +10,7 @@ const MAX_MESSAGE_CHARS = 1000;
 const MAX_HISTORY_MESSAGES = 10;
 const MAX_BODY_CHARS = 30_000;
 const UNAVAILABLE = "The assistant is temporarily unavailable. Please try again later.";
+const RATE_LIMITED = "You've sent several requests recently. Please try again later.";
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
@@ -76,6 +77,15 @@ Deno.serve(async (req) => {
   }
 
   const history: ChatMessage[] = [...sanitizeHistory(body.history), { role: "user", content: message }];
+
+  // Rate limit (per verified user, rolling hour) — checked before any AI call.
+  // Fails closed: if the check itself errors, the provider is not contacted.
+  const { data: allowed, error: limitError } = await db.rpc("consume_ai_request");
+  if (limitError) {
+    console.error("jac-assistant rate limit check:", limitError.message);
+    return json({ error: UNAVAILABLE }, 503);
+  }
+  if (allowed !== true) return json({ error: RATE_LIMITED }, 429);
 
   try {
     return json({ reply: await runAgent(history, { db, userId: user.id }) });

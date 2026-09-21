@@ -142,6 +142,7 @@
     'chat.notAvailable':     { en: "Hi! I'm JAC Assistant. Ask me about JAC Go services or your trip.", fil: 'Hi! Ako si JAC Assistant. Magtanong tungkol sa mga serbisyo ng JAC Go o sa biyahe mo.' },
     'chat.thinking':         { en: 'Thinking…',             fil: 'Nag-iisip…' },
     'chat.error':            { en: 'The assistant is temporarily unavailable. Please try again later.', fil: 'Pansamantalang hindi available ang assistant. Pakisubukan muli mamaya.' },
+    'chat.rateLimited':      { en: "You've sent several requests recently. Please try again later.", fil: 'Marami ka nang naipadalang mensahe kamakailan. Pakisubukan muli mamaya.' },
     'chat.loginRequired':    { en: 'Please log in to chat with JAC Assistant.', fil: 'Mag-login para makipag-chat sa JAC Assistant.' },
     'chat.inputPlaceholder': { en: 'Type a message…',       fil: 'Mag-type ng mensahe…' },
     'chat.send':             { en: 'Send message',          fil: 'Ipadala ang mensahe' },
