@@ -276,12 +276,14 @@
       function escHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
       var currentUserId = null;
-      (async function(){
+      // getCurrentUser() lives in a script loaded at the bottom of <body>, so
+      // wait for DOMContentLoaded instead of running immediately.
+      document.addEventListener('DOMContentLoaded', async function(){
         if (typeof getCurrentUser === 'function') {
           var user = await getCurrentUser();
           if (user) currentUserId = user.id;
         }
-      })();
+      });
 
       function fareResultHtml(f){
         return '<div class="bus-result" data-fare-id="' + f.id + '" data-klass="' + escHtml(f.klass) + '" data-price="' + f.price + '">'

@@ -179,16 +179,18 @@
     (function () {
       function escHtml(s) { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
 
-      var STATUS_PILL = { "In transit": "warn", "Delivered": "ok", "Cancelled": "alert" };
+      var STATUS_PILL = { "Delivered": "ok", "Ready for pickup": "ok", "Cancelled": "alert" };
 
       function historyRowHtml(p) {
         var pillClass = STATUS_PILL[p.status] || "warn";
         var fromShort = (p.origin || "").split(" ")[0];
         var toShort = (p.destination || "").split(" ")[0];
+        var weight = p.weight_kg != null ? ' · ' + Number(p.weight_kg).toFixed(1) + 'kg' : '';
         return '<div class="list-row">'
           + '<div style="flex:1;">'
           + '<strong style="font-size:13.5px;font-family:var(--font-mono);">' + escHtml(p.code) + '</strong>'
-          + '<div style="font-size:12px;color:var(--text-muted);">' + escHtml(fromShort) + ' → ' + escHtml(toShort) + ' · ' + Number(p.weight_kg).toFixed(1) + 'kg</div>'
+          + '<div style="font-size:12px;color:var(--text-muted);">' + escHtml(fromShort) + ' → ' + escHtml(toShort) + weight + '</div>'
+          + '<a href="track-bus.html?padala=' + encodeURIComponent(p.code) + '" style="font-size:12px;">View tracking</a>'
           + '</div>'
           + '<span class="pill ' + pillClass + '">' + escHtml(p.status) + '</span>'
           + '</div>';
@@ -204,13 +206,18 @@
 
         var { data, error } = await supabaseClient
           .from("padala_history")
-          .select("*")
+          .select("code, origin, destination, status, weight_kg, created_at")
           .eq("user_id", user.id)
           .order("created_at", { ascending: false });
-        if (error) { console.warn("padala.html: couldn't load shipment history.", error); return; }
 
         var list = document.getElementById("padala-history-list");
         var empty = document.getElementById("padala-history-empty");
+        if (error) {
+          console.warn("padala.html: couldn't load shipment history.", error);
+          list.innerHTML = '<p style="color:var(--text-muted);font-size:12.5px;">Couldn\'t load your shipments right now. Please refresh or try again later.</p>';
+          empty.style.display = "none";
+          return;
+        }
         if (!data || !data.length) {
           list.innerHTML = "";
           empty.style.display = "";
@@ -244,7 +251,7 @@
           origin: from,
           destination: to,
           weight_kg: weight,
-          status: "In transit",
+          status: "Booked",
         });
 
         submitBtn.disabled = false;
@@ -259,7 +266,9 @@
         loadHistory();
       });
 
-      loadHistory();
+      // Wait for the shared scripts at the bottom of <body> (supabase-client.js,
+      // auth.js) — an immediate call here would run before they're defined.
+      document.addEventListener("DOMContentLoaded", loadHistory);
     })();
     </script>
   </div>

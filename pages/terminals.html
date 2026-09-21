@@ -150,6 +150,9 @@
 
     <main class="view">
       <div class="grid grid-2" id="terminals-grid"></div>
+      <p id="terminals-error" style="display:none;text-align:center;padding:24px 20px;color:var(--text-muted);font-size:13.5px;">
+        Couldn't load terminals right now. Please refresh or try again later.
+      </p>
       <p id="terminals-empty" style="display:none;text-align:center;padding:24px 20px;color:var(--text-muted);font-size:13.5px;">
         No terminals listed yet.
       </p>
@@ -172,6 +175,14 @@
       // Same tag -> i18n key mapping term.html's translations already cover.
       var TAG_I18N = { "Ticketing": "term.ticketing", "Padala": "term.padala", "WiFi": "term.wifi", "Ferry transfer": "term.ferry" };
 
+      // Real coordinates when the row has them, otherwise an OSM text search.
+      function directionsUrl(t) {
+        if (t.lat != null && t.lng != null) {
+          return "https://www.openstreetmap.org/?mlat=" + encodeURIComponent(t.lat) + "&mlon=" + encodeURIComponent(t.lng) + "#map=16/" + encodeURIComponent(t.lat) + "/" + encodeURIComponent(t.lng);
+        }
+        return "https://www.openstreetmap.org/search?query=" + encodeURIComponent(t.name + " " + (t.address || ""));
+      }
+
       function cardHtml(t) {
         var photo = PHOTOS[t.name] || PLACEHOLDER_PHOTO;
         var tags = (t.tags || []).map(function (tag) {
@@ -182,21 +193,27 @@
           + '<img class="thumb" src="' + photo + '" alt="' + escHtml(t.name) + ' building" loading="lazy" />'
           + '<div class="body">'
           + '<h3>' + escHtml(t.name) + '</h3>'
-          + '<p style="font-size:12.5px;color:var(--text-muted);margin:6px 0 10px;">' + escHtml(t.address) + '</p>'
+          + '<p style="font-size:12.5px;color:var(--text-muted);margin:6px 0 10px;">' + escHtml(t.address || "") + '</p>'
           + '<div style="display:flex;gap:6px;flex-wrap:wrap;">' + tags + '</div>'
-          + '<a class="btn btn-outline" style="margin-top:12px;" data-i18n="term.getDir" href="track-bus.html">Get directions</a>'
+          + '<a class="btn btn-outline" style="margin-top:12px;" data-i18n="term.getDir" href="' + escHtml(directionsUrl(t)) + '" target="_blank" rel="noopener">Get directions</a>'
           + '</div></div>';
       }
 
       async function loadTerminals() {
         var grid = document.getElementById("terminals-grid");
         var empty = document.getElementById("terminals-empty");
+        var errorEl = document.getElementById("terminals-error");
 
         var { data, error } = await supabaseClient
           .from("terminals")
-          .select("*")
+          .select("name, address, tags, lat, lng")
           .order("name", { ascending: true });
-        if (error) { console.warn("terminals.html: couldn't load terminals.", error); return; }
+        if (error) {
+          console.warn("terminals.html: couldn't load terminals.", error);
+          errorEl.style.display = "";
+          return;
+        }
+        errorEl.style.display = "none";
 
         if (!data || !data.length) {
           empty.style.display = "";
@@ -212,7 +229,9 @@
         }
       }
 
-      loadTerminals();
+      // Wait for the shared scripts at the bottom of <body> (supabase-client.js,
+      // lang.js...) — calling immediately here would run before they exist.
+      document.addEventListener("DOMContentLoaded", loadTerminals);
     })();
     </script>
 

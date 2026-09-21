@@ -151,24 +151,180 @@
 
     <main class="view">
       <div class="grid grid-2">
+        <div class="card">
+          <span class="card-eyebrow">My Trips</span>
+          <h3>Trip status</h3>
+          <p style="font-size:12.5px;color:var(--text-muted);margin:4px 0 10px;">Status comes from your booking and its scheduled departure. JAC Go does not collect live bus GPS data, so bus position and ETA aren't available.</p>
+          <div id="trip-status-list"></div>
+          <p id="trip-status-empty" style="display:none;color:var(--text-muted);font-size:13px;">No trips yet — <a href="trip-planner.html">plan a trip</a>.</p>
+          <p id="trip-status-error" style="display:none;color:var(--text-muted);font-size:13px;">Couldn't load your trips right now. Please refresh or try again later.</p>
+        </div>
+
+        <div class="card">
+          <span class="card-eyebrow">Padala (Cargo)</span>
+          <h3>Track a shipment</h3>
+          <form id="padala-track-form" style="display:flex;gap:8px;margin:12px 0;">
+            <input id="padala-track-code" type="text" placeholder="Reference number, e.g. PAD-12345" maxlength="40" autocomplete="off" style="flex:1;min-width:0;padding:10px 12px;border:1px solid var(--line);border-radius:8px;font-family:var(--font-mono);background:var(--surface);color:var(--ink);" aria-label="Padala reference number" />
+            <button class="btn btn-primary" type="submit" id="padala-track-btn">Track</button>
+          </form>
+          <div id="padala-track-result" aria-live="polite"></div>
+        </div>
+
         <div class="card" style="grid-column:1/3;">
           <div class="map-toolbar">
-            <span class="card-eyebrow">JAC-88213 · Pasay → Lucena</span>
+            <span class="card-eyebrow">Route overview · Pasay → Lucena (reference only)</span>
             <div class="map-actions">
               <button class="btn btn-outline btn-sm" id="pin-location-btn" type="button">📍 Pin a location</button>
               <button class="btn btn-outline btn-sm" id="use-my-location-btn" type="button">Use my location</button>
               <button class="btn btn-outline btn-sm" id="clear-pin-btn" type="button" hidden>Clear pin</button>
             </div>
           </div>
-          <div id="live-map" class="live-map" role="img" aria-label="Live map tracking JAC-88213 from Pasay to Lucena"></div>
-          <p class="map-hint" id="map-hint">Click "Pin a location" then tap anywhere on the map to drop a pin — handy for marking your pickup spot.</p>
-          <div class="grid grid-3 mt-section">
-            <div><div class="card-eyebrow">Status</div><span class="pill ok" id="stat-status">On time</span></div>
-            <div><div class="card-eyebrow">ETA to Lucena</div><strong id="stat-eta">09:12 AM</strong></div>
-            <div><div class="card-eyebrow">Distance left</div><strong id="stat-distance">48 km</strong></div>
-          </div>
+          <div id="live-map" class="live-map" role="img" aria-label="Map of the approximate Pasay to Lucena road route with origin and destination terminals. Not a live bus location."></div>
+          <p class="map-hint" id="map-hint">Approximate route, for reference only — this is not a live bus location. Click "Pin a location" then tap the map to mark a pickup spot.</p>
         </div>
       </div>
+
+      <script>
+      (function () {
+        function escHtml(s) { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+        function fmtDate(iso) { return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }); }
+        function fmtDateTime(iso) {
+          var d = new Date(iso);
+          return d.toLocaleDateString("en-US", { month: "short", day: "numeric" }) + ", " + d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+        }
+
+        /* ---------- Trip status (derived from the booking, not GPS) ---------- */
+        function tripStatus(t) {
+          if (t.status === "cancelled") return { label: "Cancelled", pill: "alert", note: "This booking was cancelled." };
+          if (t.status === "completed") return { label: "Completed", pill: "ok", note: "This trip is complete." };
+          var depart = new Date(t.date + "T" + t.time);
+          if (depart.getTime() > Date.now()) return { label: "Scheduled", pill: "ok", note: "Departs " + fmtDateTime(depart) + "." };
+          return { label: "Departure time reached", pill: "warn", note: "The scheduled departure time has passed. Live status updates aren't available — please check with the terminal." };
+        }
+
+        function tripRowHtml(t) {
+          var s = tripStatus(t);
+          return '<div class="list-row">'
+            + '<div style="flex:1;">'
+            + '<strong style="font-size:13.5px;">' + escHtml(t.origin) + ' → ' + escHtml(t.destination) + '</strong>'
+            + '<div style="font-size:12px;color:var(--text-muted);">Ref: <span style="font-family:var(--font-mono);">' + escHtml(t.code) + '</span> · ' + escHtml(t.klass) + ' · Seat ' + escHtml(t.seat) + (t.gate ? ' · Gate ' + escHtml(t.gate) : '') + '</div>'
+            + '<div style="font-size:12px;color:var(--text-muted);">' + escHtml(s.note) + '</div>'
+            + '</div>'
+            + '<span class="pill ' + s.pill + '">' + escHtml(s.label) + '</span>'
+            + '</div>';
+        }
+
+        async function loadTrips() {
+          if (typeof getCurrentUser !== "function") return;
+          var user = await getCurrentUser();
+          if (!user) return;
+          var list = document.getElementById("trip-status-list");
+          var empty = document.getElementById("trip-status-empty");
+          var errEl = document.getElementById("trip-status-error");
+
+          var res = await supabaseClient
+            .from("trips")
+            .select("code, origin, destination, date, time, gate, seat, klass, status")
+            .eq("user_id", user.id)
+            .order("date", { ascending: false })
+            .order("time", { ascending: false })
+            .limit(8);
+          if (res.error) {
+            console.warn("track-bus.html: couldn't load trips.", res.error);
+            errEl.style.display = "";
+            return;
+          }
+          var trips = res.data || [];
+          // Upcoming/scheduled first, then the rest, each most recent first.
+          trips.sort(function (a, b) {
+            var au = a.status === "upcoming", bu = b.status === "upcoming";
+            if (au !== bu) return au ? -1 : 1;
+            var ka = a.date + a.time, kb = b.date + b.time;
+            return au ? (ka < kb ? -1 : 1) : (ka < kb ? 1 : -1);
+          });
+          list.innerHTML = trips.map(tripRowHtml).join("");
+          empty.style.display = trips.length ? "none" : "";
+        }
+
+        /* ---------- Padala shipment tracking ---------- */
+        var STATUS_PILL = { "Delivered": "ok", "Ready for pickup": "ok", "Cancelled": "alert" };
+
+        function shipmentHtml(p) {
+          var events = (p.padala_tracking_events || []).slice().sort(function (a, b) { return new Date(a.created_at) - new Date(b.created_at); });
+          var latest = events.length ? events[events.length - 1] : null;
+          var timeline = events.map(function (e, i) {
+            var last = i === events.length - 1;
+            return '<li style="position:relative;padding:0 0 14px 20px;border-left:2px solid ' + (last ? 'var(--red)' : 'var(--line)') + ';margin-left:6px;">'
+              + '<span style="position:absolute;left:-7px;top:2px;width:12px;height:12px;border-radius:50%;background:' + (last ? 'var(--red)' : 'var(--line)') + ';"></span>'
+              + '<strong style="font-size:13px;">' + escHtml(e.status) + '</strong>'
+              + '<div style="font-size:12px;color:var(--text-muted);">' + escHtml(fmtDateTime(e.created_at)) + (e.location_text ? ' · ' + escHtml(e.location_text) : '') + '</div>'
+              + (e.description ? '<div style="font-size:12px;">' + escHtml(e.description) + '</div>' : '')
+              + '</li>';
+          }).join("");
+
+          return '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">'
+            + '<strong style="font-family:var(--font-mono);font-size:15px;">' + escHtml(p.code) + '</strong>'
+            + '<span class="pill ' + (STATUS_PILL[p.status] || "warn") + '">' + escHtml(p.status) + '</span>'
+            + '</div>'
+            + '<dl class="ticket-meta" style="display:grid;grid-template-columns:auto 1fr;gap:2px 12px;margin:10px 0;">'
+            + '<dt>From</dt><dd style="margin:0;">' + escHtml(p.origin) + '</dd>'
+            + '<dt>To</dt><dd style="margin:0;">' + escHtml(p.destination) + '</dd>'
+            + (p.weight_kg != null ? '<dt>Weight</dt><dd style="margin:0;">' + Number(p.weight_kg).toFixed(1) + ' kg</dd>' : '')
+            + '<dt>Booked</dt><dd style="margin:0;">' + escHtml(fmtDate(p.created_at)) + '</dd>'
+            + (latest ? '<dt>Latest update</dt><dd style="margin:0;">' + escHtml(latest.status) + ' · ' + escHtml(fmtDateTime(latest.created_at)) + '</dd>' : '')
+            + '</dl>'
+            + (events.length
+                ? '<ol style="list-style:none;padding:0;margin:14px 0 0;">' + timeline + '</ol>'
+                : '<p style="font-size:12.5px;color:var(--text-muted);">No tracking updates recorded yet.</p>')
+            + '<p style="font-size:11.5px;color:var(--text-muted);margin:8px 0 0;">Updates are entered by JAC staff at terminals; this is not live GPS tracking.</p>';
+        }
+
+        async function trackShipment(code) {
+          var out = document.getElementById("padala-track-result");
+          code = String(code || "").trim().toUpperCase();
+          if (!/^[A-Z0-9-]{3,40}$/.test(code)) {
+            out.innerHTML = '<p style="font-size:13px;color:var(--text-muted);">Please enter a valid reference number, e.g. PAD-12345.</p>';
+            return;
+          }
+          if (typeof getCurrentUser !== "function") return;
+          var user = await getCurrentUser();
+          if (!user) return;
+
+          out.innerHTML = '<p style="font-size:13px;color:var(--text-muted);">Looking up…</p>';
+          // Ownership is enforced by row-level security (own shipments only);
+          // the user_id filter below is the session's, never user input.
+          var res = await supabaseClient
+            .from("padala_history")
+            .select("code, origin, destination, status, weight_kg, created_at, padala_tracking_events(status, location_text, description, created_at)")
+            .eq("user_id", user.id)
+            .eq("code", code)
+            .maybeSingle();
+          if (res.error) {
+            console.warn("track-bus.html: shipment lookup failed.", res.error);
+            out.innerHTML = '<p style="font-size:13px;color:var(--text-muted);">Couldn\'t look that up right now. Please try again later.</p>';
+            return;
+          }
+          out.innerHTML = res.data
+            ? shipmentHtml(res.data)
+            : '<p style="font-size:13px;color:var(--text-muted);">No shipment with that reference was found on your account.</p>';
+        }
+
+        document.getElementById("padala-track-form").addEventListener("submit", function (e) {
+          e.preventDefault();
+          trackShipment(document.getElementById("padala-track-code").value);
+        });
+
+        // Wait for the shared scripts at the bottom of <body> (supabase-client.js, auth.js).
+        document.addEventListener("DOMContentLoaded", function () {
+          loadTrips();
+          var pre = new URLSearchParams(window.location.search).get("padala");
+          if (pre) {
+            document.getElementById("padala-track-code").value = pre.slice(0, 40);
+            trackShipment(pre);
+          }
+        });
+      })();
+      </script>
     </main>
   </div>
 </div>

@@ -246,8 +246,11 @@
         renderGrid();
       });
 
-      loadPointsHeader();
-      loadRewards();
+      // Wait for the shared scripts at the bottom of <body> to load first.
+      document.addEventListener("DOMContentLoaded", function () {
+        loadPointsHeader();
+        loadRewards();
+      });
     })();
     </script>
   </div>

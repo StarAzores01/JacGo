@@ -432,6 +432,7 @@
 <script src="../js/nav.js"></script>
 <script src="../js/interactions.js"></script>
 <script src="../js/chatbot.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js" integrity="sha384-3zSEDfvllQohrq0PHL1fOXJuC/jSOO34H46t6UQfobFOmxE5BpjjaIJY5F2/bMnU" crossorigin="anonymous"></script>
 
 
 <script>
@@ -452,36 +453,76 @@ function formatTime12h(timeStr) {
   return `${String(h12).padStart(2, "0")}:${String(m).padStart(2, "0")} ${period}`;
 }
 
+function formatBookedOn(iso) {
+  return new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+}
+
+/* The departure terminal isn't stored on the trip — only the origin place
+   name is. Match it to a real terminals row (e.g. "Pasay (Buendia)" ->
+   "Pasay (Buendia) Terminal"); if nothing matches, no terminal is shown. */
+let terminalsCache = [];
+function findTerminal(origin) {
+  const o = String(origin || "").trim().toLowerCase();
+  if (!o) return null;
+  return terminalsCache.find(t => t.name.toLowerCase().startsWith(o)) || null;
+}
+
+let passengerName = "";
+
 function ticketCardHtml(t) {
+  const term = findTerminal(t.origin);
+  const rows = [
+    ["Passenger", passengerName],
+    ["Class", t.klass],
+    ["Departs", `${formatDateLong(t.date)}, ${formatTime12h(t.time)}`],
+    ["Seat", t.seat],
+    ["Gate", t.gate],
+    ["Terminal", term ? `${term.name} — ${term.address}` : ""],
+    ["Booked on", t.created_at ? formatBookedOn(t.created_at) : ""],
+  ].filter(r => r[1]);
   return `
-    <div class="ticket" data-trip-id="${t.id}" data-ticket-id="${escHtml(t.code)}">
+    <div class="ticket" data-trip-id="${escHtml(t.id)}" data-ticket-id="${escHtml(t.code)}">
       <div>
         <div class="ticket-route">${escHtml(t.origin)} → ${escHtml(t.destination)}</div>
-        <div class="ticket-meta">
-          <span>${formatDateLong(t.date)}, ${formatTime12h(t.time)}</span>
-          <span>Seat ${escHtml(t.seat)}</span>
-          <span>${escHtml(t.klass)}</span>
+        <div style="margin-top:6px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+          <span class="pill ok">Upcoming</span>
           <span class="fare-amount">₱${Number(t.fare).toLocaleString()}</span>
         </div>
-        <div style="margin-top:10px;display:flex;gap:8px;">
+        <dl class="ticket-meta" style="display:grid;grid-template-columns:auto 1fr;gap:2px 12px;margin:10px 0 0;">
+          ${rows.map(r => `<dt>${r[0]}</dt><dd style="margin:0;color:var(--ink,inherit);">${escHtml(r[1])}</dd>`).join("")}
+        </dl>
+        <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;">
           <button class="btn btn-outline btn-reschedule" data-i18n="tix.reschedule">Reschedule</button>
           <button class="btn btn-outline btn-cancel" data-i18n="tix.cancel">Cancel</button>
+          <a class="btn btn-outline" href="track-bus.html">Trip status</a>
         </div>
       </div>
       <div style="text-align:center;">
-        <div class="qr-box"></div>
-        <div style="font-family:var(--font-mono);font-size:11px;margin-top:6px;color:var(--text-muted);">${escHtml(t.code)}</div>
+        <div class="qr-box" data-qr="${escHtml(t.code)}" style="background:#fff;padding:4px;width:auto;height:auto;display:inline-block;"></div>
+        <div style="font-family:var(--font-mono);font-size:11px;margin-top:6px;color:var(--text-muted);">Ref: ${escHtml(t.code)}</div>
       </div>
     </div>`;
 }
 
+/* Draw a real QR of the booking reference. It encodes only the reference
+   text (no secrets) and isn't verified against any external system. */
+function renderQrCodes(root) {
+  root.querySelectorAll(".qr-box[data-qr]").forEach(box => {
+    if (typeof QRCode === "undefined") { box.remove(); return; }
+    box.innerHTML = "";
+    new QRCode(box, { text: box.dataset.qr, width: 84, height: 84, correctLevel: QRCode.CorrectLevel.M });
+  });
+}
+
 function pastTripRowHtml(t) {
+  const cancelled = t.status === "cancelled";
   return `
     <div class="list-row">
       <div style="flex:1;">
         <strong style="font-size:13.5px;">${escHtml(t.origin)} → ${escHtml(t.destination)}</strong>
-        <div style="font-size:12px;color:var(--text-muted);">${formatDateLong(t.date)} · ${escHtml(t.code)}</div>
+        <div style="font-size:12px;color:var(--text-muted);">${formatDateLong(t.date)} · Ref: ${escHtml(t.code)}</div>
       </div>
+      <span class="pill ${cancelled ? "alert" : "ok"}" style="margin-right:8px;">${cancelled ? "Cancelled" : "Completed"}</span>
       <span class="fare-amount" style="font-size:13px;">₱${Number(t.fare).toLocaleString()}</span>
     </div>`;
 }
@@ -493,14 +534,25 @@ async function loadTickets() {
   const user = await getCurrentUser();
   if (!user) return;
   currentUserId = user.id;
+  passengerName = user.name || "";
 
-  const { data: trips, error } = await supabaseClient
-    .from("trips")
-    .select("*")
-    .eq("user_id", user.id)
-    .order("date", { ascending: true })
-    .order("time", { ascending: true });
-  if (error) { console.warn("tickets.html: couldn't load trips.", error); return; }
+  const [tripsRes, terminalsRes] = await Promise.all([
+    supabaseClient
+      .from("trips")
+      .select("id, code, origin, destination, date, time, gate, seat, klass, fare, status, created_at")
+      .eq("user_id", user.id)
+      .order("date", { ascending: true })
+      .order("time", { ascending: true }),
+    supabaseClient.from("terminals").select("name, address"),
+  ]);
+  const { data: trips, error } = tripsRes;
+  if (!terminalsRes.error) terminalsCache = terminalsRes.data || [];
+  if (error) {
+    console.warn("tickets.html: couldn't load trips.", error);
+    const grid = document.getElementById("upcoming-tickets-grid");
+    grid.innerHTML = '<div class="card" style="text-align:center;padding:24px 20px;color:var(--text-muted);font-size:13.5px;">Couldn\'t load your tickets right now. Please refresh or try again later.</div>';
+    return;
+  }
 
   const upcoming = (trips || []).filter(t => t.status === "upcoming");
   const past = (trips || []).filter(t => t.status === "completed" || t.status === "cancelled")
@@ -509,6 +561,7 @@ async function loadTickets() {
   const upcomingGrid = document.getElementById("upcoming-tickets-grid");
   const upcomingEmpty = document.getElementById("upcoming-tickets-empty");
   upcomingGrid.innerHTML = upcoming.map(ticketCardHtml).join("");
+  renderQrCodes(upcomingGrid);
   upcomingEmpty.style.display = upcoming.length ? "none" : "";
 
   const pastList = document.getElementById("past-trips-list");

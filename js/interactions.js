@@ -204,7 +204,10 @@
       }
       if (errorEl) errorEl.style.display = "none";
       const params = new URLSearchParams(window.location.search);
-      window.location.href = params.get("redirect") || "dashboard.html";
+      // Only allow a plain sibling page name (e.g. "tickets.html"); anything else
+      // (absolute URLs, paths, "//host") falls back to the dashboard.
+      const target = params.get("redirect") || "";
+      window.location.href = /^[a-z0-9-]+.html$/i.test(target) ? target : "dashboard.html";
     });
   }
 

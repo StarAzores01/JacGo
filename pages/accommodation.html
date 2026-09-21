@@ -150,6 +150,9 @@
 
     <main class="view">
       <div class="grid grid-3" id="accommodation-grid"></div>
+      <p id="accommodation-error" style="display:none;text-align:center;padding:24px 20px;color:var(--text-muted);font-size:13.5px;">
+        Couldn't load accommodation right now. Please refresh or try again later.
+      </p>
       <p id="accommodation-empty" style="display:none;text-align:center;padding:24px 20px;color:var(--text-muted);font-size:13.5px;">
         No accommodation listings yet.
       </p>
@@ -179,13 +182,16 @@
         var photo = PHOTOS[a.name] || PLACEHOLDER_PHOTO;
         var priceHtml = a.price != null
           ? '<span class="fare-amount">₱' + Number(a.price).toLocaleString() + '/night</span>'
-          : '<span style="font-size:12px;color:var(--text-muted);">Contact for current rates</span>';
+          : '<span style="font-size:12px;color:var(--text-muted);">' + (a.price_level ? escHtml(a.price_level) : 'Contact for current rates') + '</span>';
         var ratingHtml = a.rating != null ? '<span class="pill warn">★ ' + Number(a.rating).toFixed(1) + '</span>' : '';
+        var place = [a.location, a.province].filter(function (s, i, arr) { return s && arr.indexOf(s) === i; }).join(" · ");
+        var typeHtml = a.type ? '<span class="pill ok" style="margin-bottom:6px;">' + escHtml(a.type) + '</span>' : '';
         return '<div class="photo-card">'
           + '<img class="thumb" src="' + photo + '" alt="' + escHtml(a.name) + '" loading="lazy" />'
           + '<div class="body">'
+          + typeHtml
           + '<h4>' + escHtml(a.name) + '</h4>'
-          + '<p>' + escHtml(a.location || "") + '</p>'
+          + '<p>' + escHtml(place) + '</p>'
           + '<div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px;">' + priceHtml + ratingHtml + '</div>'
           + '</div></div>';
       }
@@ -193,13 +199,19 @@
       async function loadAccommodation() {
         var grid = document.getElementById("accommodation-grid");
         var empty = document.getElementById("accommodation-empty");
+        var errorEl = document.getElementById("accommodation-error");
         var osmCredit = document.getElementById("accommodation-osm-credit");
 
         var { data, error } = await supabaseClient
           .from("accommodation")
-          .select("*")
+          .select("name, type, location, province, price, price_level, rating, source")
           .order("name", { ascending: true });
-        if (error) { console.warn("accommodation.html: couldn't load listings.", error); return; }
+        if (error) {
+          console.warn("accommodation.html: couldn't load listings.", error);
+          errorEl.style.display = "";
+          return;
+        }
+        errorEl.style.display = "none";
 
         if (!data || !data.length) {
           empty.style.display = "";
@@ -210,7 +222,9 @@
         osmCredit.style.display = data.some(function (a) { return a.source === "osm"; }) ? "" : "none";
       }
 
-      loadAccommodation();
+      // Run after the page's shared scripts (supabase-client.js etc.) at the
+      // bottom of <body> have loaded — an immediate call here would run first.
+      document.addEventListener("DOMContentLoaded", loadAccommodation);
     })();
     </script>
   </div>

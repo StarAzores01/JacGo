@@ -17,14 +17,9 @@
  *   - packingList: static app copy (a checklist), not user or reference
  *     data — there was never a real backend for this to migrate to.
  *
- * Known remaining gap: js/track-map.js (pages/track-bus.html) still reads
- * DB.trips[0] for its map widget. track-bus.html wasn't one of the pages
- * in this migration pass, so that key was removed here rather than kept
- * on its account — track-map.js already guards for DB.trips being
- * missing (`(typeof DB !== "undefined" && DB.trips && DB.trips[0]) || {}`),
- * so it degrades to a blank trip on the map instead of erroring, but it
- * will need the same live-query treatment as the other pages to actually
- * show real data.
+ * Bus tracking (pages/track-bus.html) no longer reads DB at all: it shows
+ * trip status from the user's trips rows and Padala status from
+ * padala_tracking_events. There is no GPS feed.
  */
 
 const DB = {

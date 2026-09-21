@@ -152,7 +152,10 @@
 
       <div class="notif-toolbar">
         <h3 id="notif-count">3 notifications</h3>
-        <button class="btn btn-outline" id="btn-clear-all" style="padding:7px 14px;font-size:12.5px;" data-i18n="notif.clearAll">Clear all</button>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="btn btn-outline" id="btn-mark-read" style="padding:7px 14px;font-size:12.5px;" type="button">Mark all as read</button>
+          <button class="btn btn-outline" id="btn-clear-all" style="padding:7px 14px;font-size:12.5px;" data-i18n="notif.clearAll">Clear all</button>
+        </div>
       </div>
 
       <div id="notif-list"></div>
@@ -207,10 +210,10 @@
       }
 
       function notifHtml(n){
-        return '<div class="toast-note' + (n.type === 'alert' ? ' alert' : '') + '" data-notif-id="' + n.id + '">'
+        return '<div class="toast-note' + (n.type === 'alert' ? ' alert' : '') + (n.read_at ? '' : ' unread') + '" data-notif-id="' + escHtml(n.id) + '"' + (n.read_at ? '' : ' style="border-left:3px solid var(--red);"') + '>'
           + '<span class="dot-ic"></span>'
           + '<div class="toast-note-body">'
-          + '<div style="font-size:13.5px;">' + escHtml(n.body) + '</div>'
+          + '<div style="font-size:13.5px;' + (n.read_at ? '' : 'font-weight:600;') + '">' + escHtml(n.body) + '</div>'
           + '<small>' + relativeTime(n.created_at) + '</small>'
           + '</div>'
           + '<button class="notif-delete" aria-label="Delete notification" title="Delete">'
@@ -224,7 +227,10 @@
         var countEl = document.getElementById('notif-count');
         var emptyEl = document.getElementById('notif-empty');
         var toolbar = document.querySelector('.notif-toolbar');
-        if(countEl) countEl.textContent = count + (count === 1 ? ' notification' : ' notifications');
+        var unread = document.querySelectorAll('#notif-list .toast-note.unread').length;
+        if(countEl) countEl.textContent = count + (count === 1 ? ' notification' : ' notifications') + (unread ? ' · ' + unread + ' unread' : '');
+        var markBtn = document.getElementById('btn-mark-read');
+        if(markBtn) markBtn.style.display = unread ? '' : 'none';
         if(emptyEl) emptyEl.style.display = count === 0 ? '' : 'none';
         if(toolbar)  toolbar.style.display = count === 0 ? 'none' : '';
       }
@@ -239,10 +245,14 @@
 
         var { data, error } = await supabaseClient
           .from('notifications')
-          .select('*')
+          .select('id, type, body, created_at, read_at')
           .eq('user_id', user.id)
           .order('created_at', { ascending: false });
-        if (error) { console.warn('notifications.html: couldn\'t load notifications.', error); return; }
+        if (error) {
+          console.warn('notifications.html: couldn\'t load notifications.', error);
+          document.getElementById('notif-list').innerHTML = '<div class="notif-empty">Couldn\'t load notifications right now. Please refresh or try again later.</div>';
+          return;
+        }
 
         document.getElementById('notif-list').innerHTML = (data || []).map(notifHtml).join('');
         updateCount();
@@ -253,11 +263,44 @@
         setTimeout(function(){ el.remove(); updateCount(); }, 220);
       }
 
+      /* --- Mark as read (own rows only; RLS + column grant allow just read_at) --- */
+      function markRead(el){
+        if(!el || !currentUserId || !el.classList.contains('unread')) return;
+        supabaseClient
+          .from('notifications')
+          .update({ read_at: new Date().toISOString() })
+          .eq('id', el.dataset.notifId)
+          .eq('user_id', currentUserId)
+          .then(function(res){
+            if(res.error){ console.warn('notifications.html: mark-read failed.', res.error); return; }
+            el.classList.remove('unread');
+            el.style.borderLeft = '';
+            var body = el.querySelector('.toast-note-body > div');
+            if(body) body.style.fontWeight = '';
+            updateCount();
+          });
+      }
+      document.getElementById('btn-mark-read').addEventListener('click', function(){
+        if(!currentUserId) return;
+        var btn = this;
+        btn.disabled = true;
+        supabaseClient
+          .from('notifications')
+          .update({ read_at: new Date().toISOString() })
+          .eq('user_id', currentUserId)
+          .is('read_at', null)
+          .then(function(res){
+            btn.disabled = false;
+            if(res.error){ console.warn('notifications.html: mark-all-read failed.', res.error); alert('Sorry, that didn\'t go through. Please try again.'); return; }
+            loadNotifications();
+          });
+      });
+
       /* --- Delete single --- */
       var pendingNotif = null;
       document.getElementById('notif-list').addEventListener('click', function(e){
         var btn = e.target.closest('.notif-delete');
-        if(!btn) return;
+        if(!btn){ markRead(e.target.closest('.toast-note')); return; }
         pendingNotif = btn.closest('.toast-note');
         document.getElementById('confirm-del-notif').classList.add('open');
       });
@@ -322,7 +365,9 @@
         });
       });
 
-      loadNotifications();
+      // Run once the shared scripts at the bottom of <body> (supabase-client.js,
+      // auth.js) have loaded; an immediate call here would run before them.
+      document.addEventListener('DOMContentLoaded', loadNotifications);
     })();
     </script>
   </div>
