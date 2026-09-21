@@ -59,6 +59,7 @@
   align-self:flex-start; background:var(--surface); border:1px solid var(--line);
   border-bottom-left-radius:4px; color:var(--ink);
 }
+.chat-msg.pending{ opacity:.7; font-style:italic; }
 .chat-msg.user{
   align-self:flex-end; background:var(--red); color:var(--white);
   border-bottom-right-radius:4px;

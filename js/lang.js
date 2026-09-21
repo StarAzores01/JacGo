@@ -136,11 +136,13 @@
     'confirm.logout.title':          { en: 'Log out?',                     fil: 'Mag-logout?' },
     'confirm.logout.msg':            { en: "You'll need to log in again to access your account.", fil: 'Kakailanganin mong mag-login muli upang ma-access ang iyong account.' },
 
-    /* Chatbot widget (placeholder — not wired to a real assistant yet) */
+    /* Chatbot widget */
     'chat.title':            { en: 'JAC Assistant',         fil: 'JAC Assistant' },
-    'chat.status':           { en: 'Not available yet',     fil: 'Hindi pa available' },
-    'chat.notAvailable':     { en: "Hi! I'm still being set up — this feature isn't available yet, but it's coming soon.", fil: 'Hi! Isinasaayos pa ako — hindi pa available ang feature na ito, pero paparating na!' },
-    'chat.notAvailableReply':{ en: "Thanks for the message! I can't actually respond yet — this feature isn't available yet, but it's on the way.", fil: 'Salamat sa mensahe mo! Hindi ko pa talaga masasagot ito — hindi pa available ang feature na ito, pero papunta na!' },
+    'chat.status':           { en: 'AI travel assistant',   fil: 'AI travel assistant' },
+    'chat.notAvailable':     { en: "Hi! I'm JAC Assistant. Ask me about JAC Go services or your trip.", fil: 'Hi! Ako si JAC Assistant. Magtanong tungkol sa mga serbisyo ng JAC Go o sa biyahe mo.' },
+    'chat.thinking':         { en: 'Thinking…',             fil: 'Nag-iisip…' },
+    'chat.error':            { en: 'The assistant is temporarily unavailable. Please try again later.', fil: 'Pansamantalang hindi available ang assistant. Pakisubukan muli mamaya.' },
+    'chat.loginRequired':    { en: 'Please log in to chat with JAC Assistant.', fil: 'Mag-login para makipag-chat sa JAC Assistant.' },
     'chat.inputPlaceholder': { en: 'Type a message…',       fil: 'Mag-type ng mensahe…' },
     'chat.send':             { en: 'Send message',          fil: 'Ipadala ang mensahe' },
     'chat.openLabel':        { en: 'Open JAC Assistant chat', fil: 'Buksan ang chat ng JAC Assistant' },

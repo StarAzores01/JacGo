@@ -1,8 +1,9 @@
 /* chatbot.js — floating "JAC Assistant" launcher + panel, shared across
-   every app page AND the public landing page (index.html). UI placeholder
-   only: no AI API is called. Every reply is the same static "not available
-   yet" message, and the thread resets each time the panel opens (nothing
-   persists across opens or page loads).
+   every app page AND the public landing page (index.html). Messages are
+   sent to the `jac-assistant` Supabase Edge Function (supabase/functions/),
+   which calls the AI provider server-side — no AI key ever reaches the
+   browser. The thread resets each time the panel opens (nothing persists
+   across opens or page loads); the last few turns are sent as context.
 
    Text follows the site's existing EN/FIL system (js/lang.js): elements
    carry data-i18n attributes so applyLang() translates them the same way
@@ -14,9 +15,11 @@
   /* English fallbacks — used only if lang.js hasn't loaded/run yet. */
   var FALLBACK = {
     "chat.title": "JAC Assistant",
-    "chat.status": "Not available yet",
-    "chat.notAvailable": "Hi! I'm still being set up — this feature isn't available yet, but it's coming soon.",
-    "chat.notAvailableReply": "Thanks for the message! I can't actually respond yet — this feature isn't available yet, but it's on the way.",
+    "chat.status": "AI travel assistant",
+    "chat.notAvailable": "Hi! I'm JAC Assistant. Ask me about JAC Go services or your trip.",
+    "chat.thinking": "Thinking…",
+    "chat.error": "The assistant is temporarily unavailable. Please try again later.",
+    "chat.loginRequired": "Please log in to chat with JAC Assistant.",
     "chat.inputPlaceholder": "Type a message…",
     "chat.send": "Send message",
     "chat.openLabel": "Open JAC Assistant chat",
@@ -105,6 +108,19 @@
     if (i18nKey) bubble.setAttribute("data-i18n", i18nKey);
     container.appendChild(bubble);
     container.scrollTop = container.scrollHeight;
+    return bubble;
+  }
+
+  /* Ask the edge function for a reply. Returns the reply text, or throws
+     (caller shows the generic error bubble). `history` is the prior turns
+     as [{ role, content }], excluding the new message. The function
+     authenticates via the session JWT that supabase-js attaches itself. */
+  async function askAssistant(message, history) {
+    const { data, error } = await supabaseClient.functions.invoke("jac-assistant", {
+      body: { message, history }
+    });
+    if (error || !data || typeof data.reply !== "string") throw error || new Error("Bad response");
+    return data.reply;
   }
 
   /* Reset to the single opening assistant message — no history survives
@@ -128,9 +144,14 @@
     const closeBtn = panel.querySelector("#chat-panel-close");
     const form = panel.querySelector("#chat-panel-form");
     const input = panel.querySelector("#chat-panel-input");
+    const sendBtn = form.querySelector(".chat-panel-send");
+    const MAX_HISTORY = 10;
+    let history = [];
+    let busy = false;
 
     function openPanel() {
       resetThread(messages);
+      history = [];
       panel.classList.add("open");
       launcher.setAttribute("aria-expanded", "true");
       closeMobileDrawer(); // avoid two overlapping panels on small screens
@@ -167,13 +188,43 @@
     const menuToggle = document.getElementById("menu-toggle");
     if (menuToggle) menuToggle.addEventListener("click", closePanel);
 
-    form.addEventListener("submit", e => {
+    form.addEventListener("submit", async e => {
       e.preventDefault();
       const text = input.value.trim();
-      if (!text) return;
+      if (!text || busy) return;
+      busy = true;
+      sendBtn.disabled = true;
       addMessage(messages, text, "user");
       input.value = "";
-      addMessage(messages, t("chat.notAvailableReply"), "assistant", "chat.notAvailableReply");
+      const pending = addMessage(messages, t("chat.thinking"), "assistant pending", "chat.thinking");
+
+      let reply, failKey = "chat.error";
+      try {
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        if (!session) {
+          failKey = "chat.loginRequired";
+          throw new Error("No session");
+        }
+        reply = await askAssistant(text, history.slice(-MAX_HISTORY));
+      } catch (err) {
+        console.warn("chatbot.js: assistant request failed.", err);
+      } finally {
+        // Always restore the UI, whatever happened above.
+        pending.classList.remove("pending");
+        if (reply) {
+          pending.removeAttribute("data-i18n");
+          pending.textContent = reply;
+          // Skip if the panel was reopened (thread reset) while this was in flight.
+          if (pending.isConnected) history.push({ role: "user", content: text }, { role: "assistant", content: reply });
+        } else {
+          pending.setAttribute("data-i18n", failKey);
+          pending.textContent = t(failKey);
+        }
+        messages.scrollTop = messages.scrollHeight;
+        busy = false;
+        sendBtn.disabled = false;
+        input.focus();
+      }
     });
   }
 
