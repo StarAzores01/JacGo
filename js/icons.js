@@ -9,10 +9,12 @@
      loadIcon("compass", document.querySelector(".nav-link .ic"));
    ===================================================================== */
 
+const ICONS_BASE = new URL("../assets/icons/", document.currentScript.src).href;
+
 async function loadIcon(name, container) {
   if (!container) return;
   try {
-    const res = await fetch(`/assets/icons/${name}.svg`);
+    const res = await fetch(`${ICONS_BASE}${name}.svg`);
     if (!res.ok) throw new Error(`icon "${name}" not found (${res.status})`);
     container.innerHTML = await res.text();
   } catch (err) {
