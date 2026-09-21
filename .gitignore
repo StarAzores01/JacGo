@@ -30,3 +30,4 @@ desktop.ini
 # .vscode/
 
 node_modules/
+supabase/.temp/
